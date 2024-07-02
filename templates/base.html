@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link href="/static/reset.css" rel="stylesheet" />
+  <link href="/static/main.css" rel="stylesheet" />
+  <link href="https://rsms.me/inter/inter.css" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" type="text/css" href="/static/js/toastify/toastify.min.css">
+
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/toastify/toastify.js" async></script>
+
+  <script src="/static/js/toast.js" async></script>
+
+
+  <title>{% block title %}{{ title }}{% endblock %} | GUILDHUB</title>
+
+  {% block head %}{% endblock %}
+</head>
+
+<body hx-boost="true">
+  <div id="content">{% block content %}{% endblock %}</div>
+</body>
+
+</html>

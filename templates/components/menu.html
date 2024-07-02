@@ -1,0 +1,53 @@
+<style>
+    #menu {
+        max-height: 29px;
+        padding: 10px;
+        display: flex;
+        width: 90%;
+        justify-content: space-between;
+    }
+
+    #menu>#logo {
+        font-size: unset;
+        align-self: center;
+    }
+
+    #logged-in-user {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px
+    }
+
+    #logged-in-user>#logout {
+        width: auto;
+        height: 100%;
+
+        margin-left: 5px;
+
+        width: 20px;
+        height: 20px;
+
+        background-color: var(--color-white);
+        -webkit-mask: url("/static/images/logout.svg") no-repeat center;
+        mask: url("/static/images/logout.svg") no-repeat center;
+        mask-size: 100%;
+
+    }
+</style>
+
+<div id="menu">
+    {% include "components/logo.html" %}
+
+    <div id="logged-in-user">
+        <p id="username">
+            @{{ user.username }}
+        </p>
+        <img id="user-avatar" src="{{ user.avatar_url }}">
+        </img>
+        <div hx-delete="/login" id="logout" hx-push-url="true" hx-target="#content" hx-select="#content"
+            hx-swap="outerHTML" class="action-icon">
+
+        </div>
+    </div>
+</div>

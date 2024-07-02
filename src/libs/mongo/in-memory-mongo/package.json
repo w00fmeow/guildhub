@@ -1,0 +1,12 @@
+{
+  "name": "in-memory-mongo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "in-memory-mongo.js",
+  "scripts": {},
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb-memory-server": "8.9.0"
+  }
+}

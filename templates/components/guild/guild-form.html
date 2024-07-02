@@ -1,0 +1,109 @@
+<style>
+    #guild-form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        width: 100%;
+    }
+
+    #form-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #form-field>label {
+        margin-bottom: 8px;
+    }
+
+    #option {
+        gap: 10px
+    }
+
+    #members-list {
+        gap: 10px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #members-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 30px;
+    }
+
+    #members-list li #user-avatar {
+        height: 30px
+    }
+
+    #submit-button.disabled {
+        background-color: red;
+    }
+</style>
+
+<form id="guild-form" hx-post="/guilds" hx-target="#content" hx-select="#content" hx-swap="outerHTML">
+    <div id="form-field">
+        <label for="name">
+            Title
+        </label>
+
+        <input placeholder="Type here..." name="name" id="name" type="text" value="{{ guild.name }}" autocomplete="off"
+            hx-post="/guilds/draft" hx-trigger="input changed delay:500ms" hx-push-url="false" hx-target="#name-error"
+            hx-select="#name-error" hx-swap="outerHTML">
+        <span id="name-error" class="error-label">
+            {{ Self::get_field_error_message(self, "name") }}
+        </span>
+    </div>
+
+    <div id="form-field" class="autocomplete">
+        <label for="username">
+            Members
+        </label>
+
+        <input name="member_search_term" id="member_search_term" type="search" placeholder="Type username here..."
+            hx-post="/guilds/draft" class="autocomplete" hx-trigger="input changed delay:500ms, search"
+            hx-target="#options" hx-select="#options" hx-swap="outerHTML" value="{{ member_search_term }}"
+            autocomplete="off">
+
+        <div id="options" class="options" tabindex='-1'>
+            {% for member in matched_members %}
+            <div id="option" hx-post="/guilds/draft/members/{{ member.id }}" hx-trigger="click, keyup[keyCode==13]"
+                tabindex="0">
+                <img id="user-avatar" src="{{ member.avatar_url }}">
+                </img>
+                <p id="username">
+                    @{{ member.username }}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <ul id="members-list">
+        {% for member in guild.members %}
+        <li id="member">
+            <input name="member_ids[]" id="member_ids" type="number" value="{{ member.id }}" hidden></input>
+
+            <img id="user-avatar" src="{{ member.avatar_url }}">
+            </img>
+
+            <p id="username">
+                @{{ member.username }}
+            </p>
+
+            <img id="remove-icon" src="/static/images/trash-can.svg" alt="Remove member" class="action-icon"
+                hx-delete="/guilds/draft/members/{{ member.id }}" hx-target="closest li" hx-swap="outerHTML"></img>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div id="action-buttons">
+        <button hx-get="/guilds" hx-target="#content" hs-push-url="true">
+            Cancel
+        </button>
+        <button type="submit" id="submit-button" {% if should_swap_oob %} hx-swap-oob="true" {% endif %} {% if !is_valid
+            %} class="disabled" {% endif %}>
+            Create
+        </button>
+    </div>
+</form>

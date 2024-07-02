@@ -1,0 +1,13 @@
+{% extends "authenticated-base.html" %}
+
+{% block title %}My Guilds{% endblock %}
+
+{% block content %}
+
+{% call super() %}
+
+<button hx-get="/guilds/create" hx-target="#content" hx-select="#content" hx-swap="outerHTML" hx-push-url="true">
+    Create new +
+</button>
+
+{% endblock %}

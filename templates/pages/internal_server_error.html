@@ -1,0 +1,20 @@
+{% extends "../base.html" %}
+
+{% block title %}Error{% endblock %}
+
+{% block head %}
+<style>
+    #content {
+        gap: 50px;
+    }
+</style>
+
+{% endblock %}
+{% block content %}
+
+{% include "../components/logo.html" %}
+
+<h3>Internal server error</h3>
+
+<body>Something went wrong</body>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "../base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block head %}
+<style>
+    #logo {
+        margin-bottom: 50px;
+    }
+
+    #login-button {
+        gap: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include "../components/logo.html" %}
+
+<h3>Login</h3>
+<a href="{{ gitlab_oath_url }}">
+    <button id="login-button">
+        <img src="/static/images/gitlab-logo.svg" alt="Gitlab logo" />
+        <span>
+            GITLAB
+        </span>
+    </button>
+</a>
+
+{% endblock %}

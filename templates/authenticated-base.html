@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "components/menu.html" %}
+
+<h3>
+  {% block title %}
+  {{ title }}
+  {% endblock %}
+</h3>
+
+{% endblock %}
