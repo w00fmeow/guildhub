@@ -127,7 +127,7 @@ impl GitlabApi {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, Debug, Clone, PartialEq)]
 pub struct Member {
     pub id: usize,
     pub username: String,

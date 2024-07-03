@@ -1,7 +1,7 @@
 use super::app::App;
 use crate::libs::health_checker::Dependency;
 use actix_web::{
-    cookie::{time::OffsetDateTime, Cookie},
+    cookie::{time::OffsetDateTime, Cookie, CookieBuilder},
     dev::ServiceResponse,
     http::{header, StatusCode},
     middleware::ErrorHandlerResponse,
@@ -14,7 +14,7 @@ use oauth2::{AuthorizationCode, CsrfToken};
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{debug, error, warn};
+use tracing::{error, warn};
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct HealthPayload {
@@ -45,8 +45,7 @@ pub async fn index() -> impl Responder {
 }
 
 pub async fn logout(app: web::Data<Arc<App>>) -> impl Responder {
-    let cookie = Cookie::build("token", "")
-        .path("/")
+    let cookie = build_auth_cookie("")
         .expires(OffsetDateTime::now_utc())
         .finish();
 
@@ -116,8 +115,6 @@ pub fn redirect_to_login<B>(mut res: ServiceResponse<B>) -> Result<ErrorHandlerR
 
     let _ = response.add_cookie(&cookie);
 
-    debug!("redirect_to_login is happening");
-
     Ok(ErrorHandlerResponse::Response(res.map_into_left_body()))
 }
 
@@ -125,6 +122,13 @@ pub fn redirect_to_login<B>(mut res: ServiceResponse<B>) -> Result<ErrorHandlerR
 pub struct GitlabAuthRequest {
     code: String,
     state: String,
+}
+
+pub fn build_auth_cookie<'a>(token: &'a str) -> CookieBuilder<'a> {
+    Cookie::build("token", token)
+        .path("/")
+        .secure(true)
+        .http_only(true)
 }
 
 pub async fn gitlab_auth(
@@ -143,11 +147,7 @@ pub async fn gitlab_auth(
         Ok(user) => {
             if let Some(user) = app.gitlab_service.get_cached_member(&user.id).await {
                 if let Ok(token) = app.auth_service.create_token(user.id) {
-                    let cookie = Cookie::build("token", token)
-                        .path("/")
-                        .secure(true)
-                        .http_only(true)
-                        .finish();
+                    let cookie = build_auth_cookie(&token).finish();
 
                     return HttpResponse::Found()
                         .insert_header((header::LOCATION, "/guilds"))

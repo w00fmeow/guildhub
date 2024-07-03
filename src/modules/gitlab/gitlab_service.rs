@@ -81,4 +81,18 @@ impl GitlabService {
 
         auth_url.to_string()
     }
+
+    pub async fn get_cached_members_by_ids(&self, user_ids: &Vec<usize>) -> Vec<Member> {
+        let members = user_ids.iter().map(|id: &usize| self.get_cached_member(id));
+
+        let members = join_all(members).await;
+
+        let members: Vec<Member> = members
+            .into_iter()
+            .filter(|member| member.is_some())
+            .map(|member| member.unwrap())
+            .collect();
+
+        return members;
+    }
 }

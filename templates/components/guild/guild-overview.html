@@ -1,0 +1,63 @@
+<style>
+    #guild-title-container {
+        overflow: hidden;
+    }
+
+    #guild-name {
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    #edit-guild-button {
+        background-color: var(--color-white);
+        -webkit-mask: url("/static/images/pencil.svg") no-repeat center;
+        mask: url("/static/images/pencil.svg") no-repeat center;
+        mask-size: 100%;
+    }
+
+    #delete-guild-button {
+        background-color: var(--color-red);
+        -webkit-mask: url("/static/images/trash-can.svg") no-repeat center;
+        mask: url("/static/images/trash-can.svg") no-repeat center;
+        mask-size: 100%;
+    }
+
+    .action-icon {
+        width: 25px;
+        height: 25px;
+    }
+
+    #guild-action-buttons {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+    }
+</style>
+
+<div id="guild-title-container">
+    <h2 id="guild-name">
+        {{ guild.name }}
+    </h2>
+    <p>
+        {% let members_count = guild.members.len() %}
+        {{ members_count }}
+        {% if members_count == 1 -%}
+        member
+        {% else -%}
+        members
+        {% endif -%}
+    </p>
+</div>
+
+{% if can_edit %}
+<div id="guild-action-buttons">
+    <div hx-get="/guilds/{{ guild.id }}/edit" id="edit-guild-button" hx-push-url="true" hx-target="#content"
+        hx-select="#content" hx-swap="outerHTML" class="action-icon">
+    </div>
+
+    <div hx-delete="/guilds/{{ guild.id }}" id="delete-guild-button" class="action-icon">
+    </div>
+</div>
+{% endif %}

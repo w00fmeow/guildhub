@@ -1,0 +1,28 @@
+{% extends "authenticated-base.html" %}
+
+{% block title %}Guild{% endblock %}
+
+{% block content %}
+
+{% call super() %}
+
+<style>
+    #content-title {
+        display: none;
+    }
+
+    #guild-header {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+</style>
+
+<div id="guild-header" hx-get="/guilds/{{ guild_id }}/overview" hx-trigger="load">
+</div>
+
+<div id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics" hx-trigger="load">
+</div>
+
+{% endblock %}

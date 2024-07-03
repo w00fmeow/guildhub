@@ -8,7 +8,7 @@ use crate::libs::health_checker::HealthChecker;
 use crate::libs::mongo::database::MongoDatabase;
 use crate::modules::auth::AuthService;
 use crate::modules::gitlab::GitlabService;
-use crate::modules::guild;
+use crate::modules::guild::{self, GuildsRepository, GuildsService};
 use actix_files as fs;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
@@ -24,6 +24,8 @@ pub struct App {
     pub configuration: Arc<Configuration>,
     pub database: Arc<MongoDatabase>,
     pub gitlab_service: Arc<GitlabService>,
+    pub guilds_repository: Arc<GuildsRepository>,
+    pub guilds_service: Arc<GuildsService>,
     pub auth_service: Arc<AuthService>,
     pub dependencies: Arc<Vec<Box<Arc<dyn HealthChecker + Send + Sync>>>>,
 }
@@ -93,6 +95,12 @@ impl App {
             },
         }
 
+        let guilds_repository = Arc::new(GuildsRepository::new(database.clone()).await);
+        let guilds_service = Arc::new(GuildsService::new(
+            guilds_repository.clone(),
+            gitlab_service.clone(),
+        ));
+
         let gitlab_service_ref = gitlab_service.clone();
         tokio::spawn(async move {
             gitlab_service_ref
@@ -109,6 +117,8 @@ impl App {
             dependencies,
             gitlab_service,
             auth_service,
+            guilds_repository,
+            guilds_service,
         }
     }
 
@@ -159,17 +169,33 @@ impl App {
                     .route("", web::get().to(guild::get_guilds_list))
                     .route("", web::post().to(guild::create_guild))
                     .route("/create", web::get().to(guild::get_create_guild_form))
+                    .route("/draft", web::post().to(guild::post_guild_form_draft))
                     .route(
-                        "/draft",
-                        web::post().to(guild::post_create_guild_form_draft),
-                    )
-                    .route(
-                        "/draft/members/{id}",
+                        "/draft/members/{member_id}",
                         web::delete().to(guild::remove_member),
                     )
                     .route(
-                        "/draft/members/{id}",
+                        "/draft/members/{member_id}",
                         web::post().to(guild::insert_new_member),
+                    )
+                    .route("/{guild_id}", web::get().to(guild::get_guild))
+                    .route("/{guild_id}", web::delete().to(guild::delete_guild))
+                    .route("/{guild_id}", web::put().to(guild::update_guild))
+                    .route(
+                        "/{guild_id}/draft",
+                        web::post().to(guild::post_guild_form_draft),
+                    )
+                    .route(
+                        "/{guild_id}/draft/members/{member_id}",
+                        web::post().to(guild::insert_new_member),
+                    )
+                    .route(
+                        "/{guild_id}/edit",
+                        web::get().to(guild::get_edit_guild_form),
+                    )
+                    .route(
+                        "/{guild_id}/overview",
+                        web::get().to(guild::get_guild_overview),
                     ),
             )
             .service(fs::Files::new(

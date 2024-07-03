@@ -2,6 +2,7 @@ use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaims {
@@ -58,7 +59,9 @@ impl AuthService {
         let now = Utc::now();
         let diff = now - issued_at;
 
-        if diff.num_hours() > 2 {
+        let should_refresh = diff.num_hours() > 2;
+
+        if should_refresh {
             let new_token = self.create_token(claims.sub)?;
 
             return Ok(Some(new_token));

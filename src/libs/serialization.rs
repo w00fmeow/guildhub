@@ -20,3 +20,31 @@ where
         StringOrInt::Number(i) => Ok(i),
     }
 }
+
+pub mod chrono_date {
+    use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    const FORMAT: &'static str = "%Y-%m-%d %H:%M:%S";
+
+    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", date.format(FORMAT));
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+
+        let naive_datetime =
+            NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)?;
+        let utc_datetime = Utc.from_utc_datetime(&naive_datetime);
+
+        Ok(utc_datetime)
+    }
+}

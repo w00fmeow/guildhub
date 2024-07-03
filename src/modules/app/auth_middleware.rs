@@ -8,9 +8,10 @@ use futures_util::FutureExt;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use tracing::{debug, error};
+use tracing::error;
 
 use crate::libs::gitlab_api::gitlab_api::Member;
+use crate::modules::app::controller::build_auth_cookie;
 
 use super::app::App;
 
@@ -94,7 +95,12 @@ where
                 .refresh_token_if_needed(token_claims)
             {
                 Ok(Some(new_token)) => {
-                    debug!("set the new token to cookie: {}", new_token);
+                    let (request, mut response) = res.into_parts();
+                    let cookie = build_auth_cookie(&new_token).finish();
+
+                    let _ = response.add_cookie(&cookie);
+
+                    return Ok(ServiceResponse::new(request, response));
                 }
                 _ => {}
             };
