@@ -1,4 +1,4 @@
-pub mod actix;
+pub mod axum;
 pub mod gitlab_api;
 pub mod health_checker;
 pub mod htmx;

@@ -1,0 +1,39 @@
+{% let is_first_page = current_page == 1 %}
+{% if topics.is_empty() && is_first_page %}
+<style>
+    #empty-state {
+        color: var(--color-disabled);
+        user-select: none;
+        opacity: 0.3;
+        font-weight: 200;
+        text-transform: uppercase;
+
+        margin-top: 15%;
+        align-self: center;
+    }
+</style>
+<h3 id="empty-state">
+    No topics created yet
+</h3>
+{% endif %}
+
+
+{% if is_first_page %}
+<li sse-swap="topic-created" hx-swap="afterend" class="not-sortable">
+</li>
+{% endif %}
+
+
+{% for topic in topics %}
+
+{% include "topic-list-item.html" %}
+
+{% if loop.last && has_more_topics %}
+{% let next_page = current_page + 1 %}
+<li class="not-sortable" hx-get="/guilds/{{ guild_id }}/topics?page={{ next_page }}" hx-trigger="intersect once"
+    hx-swap="outerHTML">
+    <span class="spinner htmx-indicator"></span>
+</li>
+{% endif %}
+
+{% endfor %}

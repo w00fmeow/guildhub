@@ -11,3 +11,16 @@ function onToastEvent({ detail: { level, message } }) {
 }
 
 document.body.addEventListener("show_toast", onToastEvent);
+
+function onFailedRequestSend(ev) {
+  const toastEvent = new CustomEvent("show_toast", {
+    detail: {
+      level: "error",
+      message: "Failed to reach our servers. Please, try again later",
+    },
+  });
+
+  document.body.dispatchEvent(toastEvent);
+}
+
+document.body.addEventListener("htmx:sendError", onFailedRequestSend);

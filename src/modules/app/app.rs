@@ -1,6 +1,5 @@
-use super::auth_middleware::RequireAuth;
-use super::controller;
-use super::errors::format_error_response;
+use super::middlewares::{optional_auth, require_auth};
+use super::{controller, Event};
 use crate::configuration::{Configuration, Environment};
 use crate::libs::gitlab_api::gitlab_api::Member;
 use crate::libs::gitlab_api::GitlabApi;
@@ -9,23 +8,27 @@ use crate::libs::mongo::database::MongoDatabase;
 use crate::modules::auth::AuthService;
 use crate::modules::gitlab::GitlabService;
 use crate::modules::guild::{self, GuildsRepository, GuildsService};
-use actix_files as fs;
-use actix_web::body::MessageBody;
-use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-use actix_web::middleware::ErrorHandlers;
-use actix_web::{error, middleware::Logger, web, App as ActixApp, HttpResponse};
-use oauth2::http::StatusCode;
+use crate::modules::topic::{self, TopicsRepository, TopicsService};
+use axum::middleware;
+use axum::routing::{delete, get, post, put};
+use axum::Router;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::info;
+use tokio::sync::broadcast::{self, Receiver, Sender};
+use tower_http::{services::ServeDir, trace::TraceLayer};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 pub struct App {
+    pub events_channel: (Sender<Event>, Receiver<Event>),
     pub configuration: Arc<Configuration>,
     pub database: Arc<MongoDatabase>,
     pub gitlab_service: Arc<GitlabService>,
     pub guilds_repository: Arc<GuildsRepository>,
     pub guilds_service: Arc<GuildsService>,
+    pub topics_repository: Arc<TopicsRepository>,
+    pub topics_service: Arc<TopicsService>,
     pub auth_service: Arc<AuthService>,
     pub dependencies: Arc<Vec<Box<Arc<dyn HealthChecker + Send + Sync>>>>,
 }
@@ -49,6 +52,8 @@ impl App {
                 let _ = log_builder.pretty().try_init();
             }
         };
+
+        let events_channel = broadcast::channel::<Event>(10);
 
         let database = Arc::new(MongoDatabase::new(configuration.mongo.clone()));
 
@@ -95,8 +100,15 @@ impl App {
             },
         }
 
+        let topics_repository = Arc::new(TopicsRepository::new(database.clone()).await);
+        let topics_service = Arc::new(TopicsService::new(
+            gitlab_service.clone(),
+            topics_repository.clone(),
+        ));
+
         let guilds_repository = Arc::new(GuildsRepository::new(database.clone()).await);
         let guilds_service = Arc::new(GuildsService::new(
+            topics_service.clone(),
             guilds_repository.clone(),
             gitlab_service.clone(),
         ));
@@ -111,7 +123,42 @@ impl App {
         let dependencies: Arc<Vec<Box<Arc<dyn HealthChecker + Send + Sync>>>> =
             Arc::new(vec![Box::new(database.clone())]);
 
+        let app_events_sender = events_channel.0.clone();
+
+        let guilds_service_ref = guilds_service.clone();
+
+        tokio::spawn(async move {
+            let mut guild_events_receiver = guilds_service_ref.events_channel.0.subscribe();
+
+            loop {
+                match guild_events_receiver.recv().await {
+                    Ok(event) => {
+                        let _ = app_events_sender.send(event.into());
+                    }
+                    Err(err) => error!("{err}"),
+                }
+            }
+        });
+
+        let app_events_sender = events_channel.0.clone();
+
+        let topics_service_ref = topics_service.clone();
+
+        tokio::spawn(async move {
+            let mut topic_events_receiver = topics_service_ref.events_channel.0.subscribe();
+
+            loop {
+                match topic_events_receiver.recv().await {
+                    Ok(event) => {
+                        let _ = app_events_sender.send(event.into());
+                    }
+                    Err(err) => error!("{err}"),
+                }
+            }
+        });
+
         App {
+            events_channel,
             configuration,
             database,
             dependencies,
@@ -119,91 +166,78 @@ impl App {
             auth_service,
             guilds_repository,
             guilds_service,
+            topics_repository,
+            topics_service,
         }
     }
 
-    pub fn get_actix_app(
-        app: Arc<App>,
-    ) -> ActixApp<
-        impl ServiceFactory<
-            ServiceRequest,
-            Config = (),
-            Response = ServiceResponse<impl MessageBody>,
-            Error = error::Error,
-            InitError = (),
-        >,
-    > {
-        let assets_path = std::env::current_dir().unwrap();
-        let assets_path = assets_path.to_str().unwrap();
+    pub fn get_app_router(app: Arc<App>) -> Router {
+        let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("static");
 
-        ActixApp::new()
-            .app_data(web::Data::new(app.clone()))
-            .app_data(web::JsonConfig::default().error_handler(|err, _req| {
-                error::InternalError::from_response(
-                    "",
-                    HttpResponse::BadRequest()
-                        .content_type("application/json")
-                        .body(format_error_response(&err.to_string())),
-                )
-                .into()
-            }))
-            .wrap(
-                ErrorHandlers::new()
-                    .handler(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        controller::add_internal_server_error_to_response,
-                    )
-                    .handler(
-                        StatusCode::UNAUTHORIZED,
-                        controller::add_internal_server_error_to_response,
-                    ),
+        let guild_router = Router::new()
+            .route("/", get(guild::get_guilds_page))
+            .route("/", post(guild::create_guild))
+            .route("/list", get(guild::get_guilds_list))
+            .route("/create", get(guild::get_create_guild_form))
+            .route("/draft", post(guild::post_guild_form_draft))
+            .route("/draft/members/:member_id", delete(guild::remove_member))
+            .route("/draft/members/:member_id", post(guild::insert_new_member))
+            .route("/:guild_id", get(guild::get_guild))
+            .route("/:guild_id", delete(guild::delete_guild))
+            .route("/:guild_id", put(guild::update_guild))
+            .route("/:guild_id/events", get(guild::subscribe_to_events))
+            .route("/:guild_id/draft", post(guild::post_guild_form_draft))
+            .route(
+                "/:guild_id/draft/members/:member_id",
+                post(guild::insert_new_member),
             )
-            .route("/", web::get().to(controller::index))
-            .route("/health", web::get().to(controller::health))
-            .route("/login", web::get().to(controller::login))
-            .route("/login", web::delete().to(controller::logout))
-            .route("/gitlab_auth", web::get().to(controller::gitlab_auth))
-            .service(
-                web::scope("/guilds")
-                    .wrap(RequireAuth)
-                    .route("", web::get().to(guild::get_guilds_list))
-                    .route("", web::post().to(guild::create_guild))
-                    .route("/create", web::get().to(guild::get_create_guild_form))
-                    .route("/draft", web::post().to(guild::post_guild_form_draft))
-                    .route(
-                        "/draft/members/{member_id}",
-                        web::delete().to(guild::remove_member),
-                    )
-                    .route(
-                        "/draft/members/{member_id}",
-                        web::post().to(guild::insert_new_member),
-                    )
-                    .route("/{guild_id}", web::get().to(guild::get_guild))
-                    .route("/{guild_id}", web::delete().to(guild::delete_guild))
-                    .route("/{guild_id}", web::put().to(guild::update_guild))
-                    .route(
-                        "/{guild_id}/draft",
-                        web::post().to(guild::post_guild_form_draft),
-                    )
-                    .route(
-                        "/{guild_id}/draft/members/{member_id}",
-                        web::post().to(guild::insert_new_member),
-                    )
-                    .route(
-                        "/{guild_id}/edit",
-                        web::get().to(guild::get_edit_guild_form),
-                    )
-                    .route(
-                        "/{guild_id}/overview",
-                        web::get().to(guild::get_guild_overview),
-                    ),
+            .route("/:guild_id/edit", get(guild::get_edit_guild_form))
+            .route("/:guild_id/overview", get(guild::get_guild_overview))
+            .route("/:guild_id/topics", get(topic::get_topics_list))
+            .route("/:guild_id/topics", post(topic::create_topic))
+            .route("/:guild_id/topics/add", get(topic::get_create_topic_form))
+            .route(
+                "/:guild_id/topics/draft",
+                post(topic::post_topic_form_draft),
             )
-            .service(fs::Files::new(
-                "/static",
-                format!("{assets_path}/static").as_str(),
-            ))
-            .default_service(web::to(controller::not_found))
-            .wrap(Logger::default())
+            .route(
+                "/:guild_id/topics/:topic_id/card",
+                get(topic::get_topic_card),
+            )
+            .route(
+                "/:guild_id/topics/:topic_id/draft",
+                post(topic::post_topic_form_draft),
+            )
+            .route(
+                "/:guild_id/topics/:topic_id",
+                get(topic::get_edit_topic_form),
+            )
+            .route("/:guild_id/topics/:topic_id", put(topic::update_topic))
+            .route(
+                "/:guild_id/topics/:topic_id/vote",
+                post(topic::upvote_topic),
+            )
+            .route("/:guild_id/topics/:topic_id", delete(topic::delete_topic))
+            .route(
+                "/:guild_id/topics/:topic_id/vote",
+                delete(topic::remove_vote_from_topic),
+            )
+            .route_layer(middleware::from_fn_with_state(app.clone(), require_auth));
+
+        let public_router = Router::new()
+            .route("/", get(controller::index))
+            .route("/health", get(controller::health))
+            .route("/login", get(controller::login))
+            .route("/login", delete(controller::logout))
+            .route("/gitlab_auth", get(controller::gitlab_auth));
+
+        Router::new()
+            .merge(public_router)
+            .nest("/guilds", guild_router)
+            .nest_service("/static", ServeDir::new(assets_dir))
+            .route_layer(middleware::from_fn_with_state(app.clone(), optional_auth))
+            .with_state(app)
+            .layer(TraceLayer::new_for_http())
     }
 
     pub fn is_healthy(&self) -> bool {

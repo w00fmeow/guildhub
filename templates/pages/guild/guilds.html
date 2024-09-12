@@ -6,7 +6,40 @@
 
 {% call super() %}
 
-<button hx-get="/guilds/create" hx-target="#content" hx-select="#content" hx-swap="outerHTML" hx-push-url="true">
+<style>
+    #guilds {
+        display: flex;
+        justify-content: flex-start;
+        flex: 1;
+        width: 100%;
+        flex-direction: column;
+        gap: 24px;
+        align-items: center;
+    }
+
+    #guilds>.skeleton {
+        height: 120px;
+        width: 264px;
+    }
+
+    #create-guild-button {
+        position: sticky;
+        bottom: 10px;
+        margin-top: 24px;
+    }
+
+    #content {
+        padding-bottom: 20px;
+    }
+</style>
+
+<ul id="guilds" hx-get="/guilds/list" hx-trigger="load">
+    <div class="skeleton htmx-indicator"></div>
+    <div class="skeleton htmx-indicator"></div>
+</ul>
+
+<button id="create-guild-button" class="--action" hx-get="/guilds/create" hx-target="#content" hx-select="#content"
+    hx-swap="outerHTML" hx-push-url="true">
     Create new +
 </button>
 

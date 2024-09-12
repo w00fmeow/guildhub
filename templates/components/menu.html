@@ -1,22 +1,26 @@
 <style>
     #menu {
-        max-height: 29px;
+        max-height: 30px;
         padding: 10px;
         display: flex;
-        width: 90%;
+        width: 100%;
         justify-content: space-between;
+        position: sticky;
+        top: 0;
     }
 
     #menu>#logo {
-        font-size: unset;
+        font-size: 1.7em;
         align-self: center;
+        cursor: pointer;
     }
 
     #logged-in-user {
         display: flex;
-        justify-content: center;
+        justify-content: flex-end;
         align-items: center;
-        gap: 10px
+        gap: 10px;
+        max-width: 200px
     }
 
     #logged-in-user>#logout {
@@ -32,11 +36,22 @@
         -webkit-mask: url("/static/images/logout.svg") no-repeat center;
         mask: url("/static/images/logout.svg") no-repeat center;
         mask-size: 100%;
+    }
 
+    @media only screen and (max-width: 500px) {
+        #logged-in-user>#username {
+            display: none;
+        }
+    }
+
+    @media only screen and (max-width: 300px) {
+        #logged-in-user>#user-avatar {
+            display: none;
+        }
     }
 </style>
 
-<div id="menu">
+<menu id="menu">
     {% include "components/logo.html" %}
 
     <div id="logged-in-user">
@@ -50,4 +65,4 @@
 
         </div>
     </div>
-</div>
+</menu>

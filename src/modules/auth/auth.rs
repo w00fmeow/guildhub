@@ -2,7 +2,6 @@ use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaims {

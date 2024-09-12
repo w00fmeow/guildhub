@@ -16,13 +16,144 @@
         display: flex;
         flex-direction: row;
         justify-content: space-between;
+        padding-top: 8px;
+    }
+
+    #guild-topics-header {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin: 20px 0 10px 0;
+    }
+
+    #guild-topics-header-title {
+        font-weight: 200;
+    }
+
+    #guild-topics {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+
+    #guild-container {
+        width: 100%;
+        height: 100%;
     }
 </style>
 
-<div id="guild-header" hx-get="/guilds/{{ guild_id }}/overview" hx-trigger="load">
-</div>
+<div id="guild-container" hx-ext="sse" sse-connect="/guilds/{{ guild_id }}/events">
+    {% include "components/guild/guild-overview.html" %}
 
-<div id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics" hx-trigger="load">
-</div>
 
+    <div id="guild-topics-header">
+        <h3 id="guild-topics-header-title">
+            Topics
+        </h3>
+        <div hx-get="/guilds/{{ guild_id }}/topics/add" id="add-new-topic-button" class="action-icon" hx-push-url="true"
+            hx-target="#content" hx-select="#content" hx-swap="outerHTML">
+            +
+        </div>
+    </div>
+
+
+    <div sse-swap="topics-order-changed" hx-swap="none"></div>
+
+    <style>
+        #guild-topics>.skeleton {
+            height: 112px;
+            border-radius: 8px;
+        }
+
+        .not-sortable {
+            display: flex;
+            justify-content: center;
+        }
+
+        .topic-card {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--color-white);
+            padding: 20px 30px;
+            border-radius: 8px;
+            gap: 20px;
+        }
+
+        .topic-card.is-upvoted-by-me {
+            border: 1px solid var(--color-green);
+        }
+
+        #action-buttons {
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .topic-card:hover #action-buttons {
+            opacity: 1;
+        }
+
+        #edit-topic-button {
+            background-color: var(--color-white);
+            -webkit-mask: url("/static/images/pencil.svg") no-repeat center;
+            mask: url("/static/images/pencil.svg") no-repeat center;
+            mask-size: 100%;
+        }
+
+        #delete-topic-button {
+            background-color: var(--color-red);
+            -webkit-mask: url("/static/images/trash-can.svg") no-repeat center;
+            mask: url("/static/images/trash-can.svg") no-repeat center;
+            mask-size: 100%;
+        }
+
+        #topic-first-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #topic-second-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #user-avatar {
+            height: 24px;
+        }
+
+        #user-container {
+            display: flex;
+            gap: 5px;
+        }
+
+        #upvotes-container {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #upvotes-container.is-upvoted-by-me {
+            color: var(--color-green);
+        }
+
+        #upvotes-count {
+            line-height: 1em;
+            font-weight: 400;
+        }
+
+        #upvotes-container.is-upvoted-by-me #upvote-icon {
+            content: url("/static/images/arrow-up-filled.svg");
+        }
+    </style>
+    <ul id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics?page=1" hx-trigger="load">
+        <div class="skeleton htmx-indicator"></div>
+        <div class="skeleton htmx-indicator"></div>
+        <div class="skeleton htmx-indicator"></div>
+    </ul>
+</div>
 {% endblock %}

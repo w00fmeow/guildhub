@@ -1,42 +1,62 @@
-use actix_web::error::InternalError;
-use actix_web::http::header;
-use actix_web::FromRequest;
-use actix_web::HttpMessage;
-use actix_web::HttpResponse;
-use futures::future::ready;
-use futures::future::Ready;
+use std::convert::Infallible;
+
+use axum::async_trait;
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
+use axum::http::StatusCode;
+use axum::RequestPartsExt;
 
 use crate::libs::gitlab_api::gitlab_api::Member;
 
+#[derive(Clone)]
 pub struct Authenticated(pub Member);
 
-impl FromRequest for Authenticated {
-    type Error = actix_web::Error;
-    type Future = Ready<Result<Self, Self::Error>>;
+#[async_trait]
+impl<S> FromRequestParts<S> for Authenticated
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, &'static str);
 
-    fn from_request(
-        req: &actix_web::HttpRequest,
-        _payload: &mut actix_web::dev::Payload,
-    ) -> Self::Future {
-        let value = req.extensions().get::<Member>().cloned();
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        match parts.extract::<MaybeAuthenticated>().await {
+            Ok(MaybeAuthenticated(Some(member))) => Ok(Authenticated(member)),
 
-        let result = match value {
-            Some(user) => Ok(Authenticated(user)),
-            None => {
-                let response = HttpResponse::Found()
-                    .insert_header((header::LOCATION, "/login"))
-                    .finish();
-
-                Err(InternalError::from_response("Failed to decode token", response).into())
-            }
-        };
-
-        ready(result)
+            _ => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to authenticate user",
+            )),
+        }
     }
 }
 
 impl std::ops::Deref for Authenticated {
     type Target = Member;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct MaybeAuthenticated(pub Option<Member>);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for MaybeAuthenticated
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        let member = parts.extensions.get::<Member>().cloned();
+
+        Ok(MaybeAuthenticated(member))
+    }
+}
+
+impl std::ops::Deref for MaybeAuthenticated {
+    type Target = Option<Member>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

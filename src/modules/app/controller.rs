@@ -1,15 +1,17 @@
-use super::app::App;
+use super::{app::App, user_extractor::MaybeAuthenticated, AppError};
 use crate::libs::health_checker::Dependency;
-use actix_web::{
-    cookie::{time::OffsetDateTime, Cookie, CookieBuilder},
-    dev::ServiceResponse,
-    http::{header, StatusCode},
-    middleware::ErrorHandlerResponse,
-    web::{self, Redirect},
-    HttpResponse, Responder, Result,
-};
 
-use askama_actix::Template;
+use axum::http::{header::SET_COOKIE, HeaderValue};
+
+use askama::Template;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::{IntoResponse, Redirect},
+    Json,
+};
+use axum_extra::extract::cookie::Cookie;
+use cookie::{time::OffsetDateTime, CookieBuilder};
 use oauth2::{AuthorizationCode, CsrfToken};
 
 use serde::{Deserialize, Serialize};
@@ -21,7 +23,7 @@ pub struct HealthPayload {
     pub dependencies: Vec<Dependency>,
 }
 
-pub async fn health(app: web::Data<Arc<App>>) -> HttpResponse {
+pub async fn health(State(app): State<Arc<App>>) -> impl IntoResponse {
     let health_payload = HealthPayload {
         dependencies: app
             .dependencies
@@ -31,30 +33,35 @@ pub async fn health(app: web::Data<Arc<App>>) -> HttpResponse {
     };
 
     let response = if app.is_healthy() {
-        HttpResponse::Ok().json(health_payload)
+        (StatusCode::OK, Json(health_payload))
     } else {
-        HttpResponse::ServiceUnavailable().json(health_payload)
+        (StatusCode::SERVICE_UNAVAILABLE, Json(health_payload))
     };
 
     return response;
 }
 
-pub async fn index() -> impl Responder {
-    // todo if authenticated => redirect to list of guilds | middleware?
+pub async fn index(MaybeAuthenticated(user): MaybeAuthenticated) -> impl IntoResponse {
+    if user.is_some() {
+        return Redirect::to("/guilds");
+    }
+
     Redirect::to("/login")
 }
 
-pub async fn logout(app: web::Data<Arc<App>>) -> impl Responder {
-    let cookie = build_auth_cookie("")
-        .expires(OffsetDateTime::now_utc())
-        .finish();
+pub async fn logout(State(app): State<Arc<App>>) -> Result<impl IntoResponse, AppError> {
+    let cookie = build_auth_cookie("").expires(OffsetDateTime::now_utc());
 
-    let body = LoginTemplate {
+    let mut response = LoginTemplate {
         gitlab_oath_url: app.gitlab_service.get_oath_url(),
     }
-    .to_string();
+    .into_response();
 
-    return HttpResponse::Ok().cookie(cookie).body(body);
+    let cookie = HeaderValue::from_str(&cookie.to_string())?;
+
+    response.headers_mut().insert(SET_COOKIE, cookie);
+
+    return Ok(response);
 }
 
 #[derive(Template)]
@@ -63,17 +70,25 @@ struct LoginTemplate {
     pub gitlab_oath_url: String,
 }
 
-pub async fn login(app: web::Data<Arc<App>>) -> impl Responder {
+pub async fn login(
+    State(app): State<Arc<App>>,
+    MaybeAuthenticated(user): MaybeAuthenticated,
+) -> impl IntoResponse {
+    if user.is_some() {
+        return Redirect::temporary("/guilds").into_response();
+    }
+
     LoginTemplate {
         gitlab_oath_url: app.gitlab_service.get_oath_url(),
     }
+    .into_response()
 }
 
 #[derive(Template)]
 #[template(path = "pages/not_found.html")]
 struct NotFoundTemplate;
 
-pub async fn not_found() -> impl Responder {
+pub async fn not_found() -> impl IntoResponse {
     NotFoundTemplate {}
 }
 
@@ -81,60 +96,23 @@ pub async fn not_found() -> impl Responder {
 #[template(path = "pages/internal_server_error.html")]
 struct InternalError;
 
-pub fn add_internal_server_error_to_response<B>(
-    res: ServiceResponse<B>,
-) -> Result<ErrorHandlerResponse<B>> {
-    let (req, res) = res.into_parts();
-
-    let res = res.set_body(InternalError {}.to_string());
-
-    let res = ServiceResponse::new(req, res)
-        .map_into_boxed_body()
-        .map_into_right_body();
-
-    Ok(ErrorHandlerResponse::Response(res))
-}
-
-pub fn redirect_to_login<B>(mut res: ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
-    let response = res.response_mut();
-
-    let mut _status = response.status_mut();
-
-    let mut new_status_code = StatusCode::SEE_OTHER;
-
-    _status = &mut new_status_code;
-
-    let cookie = Cookie::build("token", "")
-        .path("/")
-        .expires(OffsetDateTime::now_utc())
-        .finish();
-
-    response
-        .headers_mut()
-        .insert(header::LOCATION, header::HeaderValue::from_static("/login"));
-
-    let _ = response.add_cookie(&cookie);
-
-    Ok(ErrorHandlerResponse::Response(res.map_into_left_body()))
-}
-
 #[derive(Deserialize)]
 pub struct GitlabAuthRequest {
     code: String,
     state: String,
 }
 
-pub fn build_auth_cookie<'a>(token: &'a str) -> CookieBuilder<'a> {
-    Cookie::build("token", token)
+pub fn build_auth_cookie(token: &str) -> CookieBuilder {
+    Cookie::build(("token", token))
         .path("/")
         .secure(true)
         .http_only(true)
 }
 
 pub async fn gitlab_auth(
-    app: web::Data<Arc<App>>,
-    params: web::Query<GitlabAuthRequest>,
-) -> impl Responder {
+    State(app): State<Arc<App>>,
+    Query(params): Query<GitlabAuthRequest>,
+) -> Result<impl IntoResponse, AppError> {
     let code = AuthorizationCode::new(params.code.clone());
     let _state = CsrfToken::new(params.state.clone());
 
@@ -147,12 +125,15 @@ pub async fn gitlab_auth(
         Ok(user) => {
             if let Some(user) = app.gitlab_service.get_cached_member(&user.id).await {
                 if let Ok(token) = app.auth_service.create_token(user.id) {
-                    let cookie = build_auth_cookie(&token).finish();
+                    let cookie = build_auth_cookie(&token);
 
-                    return HttpResponse::Found()
-                        .insert_header((header::LOCATION, "/guilds"))
-                        .cookie(cookie)
-                        .finish();
+                    let mut response = Redirect::temporary("/guilds").into_response();
+
+                    response
+                        .headers_mut()
+                        .insert(SET_COOKIE, HeaderValue::from_str(&cookie.to_string())?);
+
+                    return Ok(response);
                 }
             } else {
                 warn!("User {} tried to login but he is missing from cache, which indicates that he does not belong to group", &user.id)
@@ -163,7 +144,5 @@ pub async fn gitlab_auth(
         }
     }
 
-    HttpResponse::Found()
-        .insert_header((header::LOCATION, "/login"))
-        .finish()
+    Ok(Redirect::temporary("/login").into_response())
 }

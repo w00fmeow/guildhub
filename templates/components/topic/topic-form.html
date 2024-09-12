@@ -1,0 +1,66 @@
+<style>
+    #topic-form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        width: 100%;
+    }
+
+    #form-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #form-field>label {
+        margin-bottom: 8px;
+    }
+
+    #submit-button.disabled {
+        background-color: red;
+    }
+</style>
+
+<form id="topic-form" {% match topic.id %} {% when Some with (topic_id) %}
+    hx-put="/guilds/{{ topic.guild_id }}/topics/{{ topic_id }}" {% when None %}
+    hx-post="/guilds/{{ topic.guild_id }}/topics" {% endmatch %} hx-target="#content" hx-select="#content"
+    hx-swap="outerHTML">
+    <div id="form-field">
+        <label for="text">
+            Topic name
+        </label>
+
+        <input placeholder="Suggest discussion topic..." name="text" id="text" type="text" value="{{ topic.text }}"
+            autocomplete="off" {% match topic.id %} {% when Some with (topic_id) %}
+            hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic_id }}/draft" {% when None %}
+            hx-post="/guilds/{{ topic.guild_id }}/topics/draft" {% endmatch %} hx-trigger="input changed delay:500ms"
+            hx-push-url="false" hx-target="#text-error" hx-select="#text-error" hx-swap="outerHTML">
+        <span id="text-error" class="error-label">
+            {{ Self::get_field_error_message(self, "text") }}
+        </span>
+    </div>
+
+    <div id="form-field" class="--checkbox">
+        <label for="i-will-present">
+            I will present it
+        </label>
+
+        <input name="i-will-present" id="i-will-present" type="checkbox" {% match topic.id %} {% when Some with
+            (topic_id) %} hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic_id }}/draft" {% when None %}
+            hx-post="/guilds/{{ topic.guild_id }}/topics/draft" {% endmatch %} hx-trigger="click" hx-push-url="false"
+            hx-swap="none" value="true" {% if topic.will_be_presented_by_the_creator %} checked {% endif %}>
+    </div>
+
+
+
+    <div id="action-buttons">
+        <button hx-get="/guilds/{{ topic.guild_id }}" hx-target="#content" hx-select="#content" hx-swap="outerHTML"
+            hx-push-url="true">
+            Cancel
+        </button>
+        <button type="submit" id="submit-button" {% if should_swap_oob %} hx-swap-oob="true" {% endif %} {% if !is_valid
+            %} class="disabled" {% endif %}>
+            {% match topic.id %} {% when Some with (_) %} Update {% when None
+            %} Submit {% endmatch %}
+        </button>
+    </div>
+</form>

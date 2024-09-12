@@ -1,5 +1,6 @@
 use crate::libs::serialization;
-use askama::Template;
+use crate::modules::app::Event;
+use askama_axum::Template;
 use bson::oid::ObjectId;
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
@@ -24,6 +25,7 @@ pub struct Guild {
     pub id: String,
     pub name: String,
     pub members: Vec<Member>,
+    pub topics_count: usize,
     pub created_by_user: Member,
     #[serde(with = "serialization::chrono_date")]
     pub updated_at: DateTime<Utc>,
@@ -111,13 +113,40 @@ pub struct GuildsListTemplate {
 #[template(path = "pages/guild/guild.html")]
 pub struct GuildTemplate {
     pub user: Member,
+    pub guild: Option<Guild>,
+    pub can_edit: bool,
     pub guild_id: String,
 }
 
 #[derive(Template)]
 #[template(path = "components/guild/guild-overview.html")]
 pub struct GuildOverviewTemplate {
+    pub guild_id: String,
     pub user: Member,
-    pub guild: Guild,
+    pub guild: Option<Guild>,
     pub can_edit: bool,
+}
+
+#[derive(Template)]
+#[template(path = "components/guild/guild-list-items.html")]
+pub struct GuildListItemsTemplate {
+    pub guilds: Vec<Guild>,
+}
+
+#[derive(Deserialize)]
+pub struct GuildIdParameter {
+    pub guild_id: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub enum GuildEvent {
+    Create(Guild),
+    Update(Guild),
+    Delete(String),
+}
+
+impl Into<Event> for GuildEvent {
+    fn into(self) -> Event {
+        Event::Guild(self)
+    }
 }

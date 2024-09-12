@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use bson::doc;
 use mongodb::{Client, ClientSession, Collection, Database, IndexModel};
@@ -8,7 +8,6 @@ use tracing::{debug, info, warn};
 
 use crate::configuration::MongoConfiguration;
 use crate::libs::health_checker::HealthChecker;
-use crate::modules::app::errors::AppError;
 
 pub struct MongoDatabase {
     pub client: Client,
@@ -29,7 +28,7 @@ impl MongoDatabase {
     pub fn get_database_client(&self) -> Result<Database> {
         match self.client.default_database() {
             Some(db) => Ok(db),
-            None => Err(AppError::InternalError.into()),
+            None => bail!("Failed to get database client"),
         }
     }
 

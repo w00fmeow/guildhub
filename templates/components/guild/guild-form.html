@@ -6,19 +6,6 @@
         width: 100%;
     }
 
-    #form-field {
-        display: flex;
-        flex-direction: column;
-    }
-
-    #form-field>label {
-        margin-bottom: 8px;
-    }
-
-    #option {
-        gap: 10px
-    }
-
     #members-list {
         gap: 10px;
         display: flex;
@@ -36,13 +23,59 @@
         height: 30px
     }
 
-    #submit-button.disabled {
-        background-color: red;
+    #submit-button.--disabled {
+        background-color: var(--color-red);
+    }
+
+    #options {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        flex-direction: column;
+        opacity: 1;
+        scrollbar-width: none;
+    }
+
+    #option {
+        gap: 10px;
+    }
+
+    #options>.no-members-found {
+        padding: 14px 8px;
+        color: var(--color-disabled);
+        user-select: none;
+        align-self: center;
+    }
+
+    #options>.spinner {
+        display: none;
+    }
+
+    #options.htmx-request>.spinner {
+        display: inline !important;
+        align-self: center;
+    }
+
+    #options.htmx-request>* {
+        display: none !important;
     }
 </style>
 
+<script>
+    function onBodyClick(ev) {
+        try {
+            document.getElementById('options').innerHTML = '';
+            document.getElementById('member_search_term').value = '';
+        } catch { }
+    }
+
+    document.body.removeEventListener("click", onBodyClick);
+    document.body.addEventListener("click", onBodyClick);
+</script>
+
 <form id="guild-form" {% match guild.id %} {% when Some with (guild_id) %} hx-put="/guilds/{{ guild_id }}" {% when None
-    %} hx-post="/guilds" {% endmatch %} hx-target="#content" hx-select="#content" hx-swap="outerHTML">
+    %} hx-post="/guilds" {% endmatch %} hx-target="#content" hx-select="#content" hx-swap="outerHTML"
+    hx-sync="this:replace">
     <div id="form-field">
         <label for="name">
             Title
@@ -57,7 +90,9 @@
         </span>
     </div>
 
-    <div id="form-field" class="autocomplete">
+
+
+    <div id="form-field" class="autocomplete" hx-on:click="event.stopPropagation(); event.preventDefault();">
         <label for="username">
             Members
         </label>
@@ -66,9 +101,17 @@
             match guild.id %} {% when Some with (guild_id) %} hx-post="/guilds/{{ guild_id }}/draft" {% when None %}
             hx-post="/guilds/draft" {% endmatch %} class="autocomplete" hx-trigger="input changed delay:500ms, search"
             hx-target="#options" hx-select="#options" hx-swap="outerHTML" value="{{ member_search_term }}"
-            autocomplete="off">
+            autocomplete="off" hx-indicator="#options">
 
-        <div id="options" class="options" tabindex='-1'>
+        <div id="options" class="options htmx-indicator" tabindex='-1'>
+            <span class="spinner"></span>
+
+            {% if matched_members.len() == 0 && !member_search_term.is_empty()%}
+            <li id="member" class="no-members-found">
+                <h4>No members found</h4>
+            </li>
+            {% endif %}
+
             {% for member in matched_members %}
             <div id="option" {% match guild.id %} {% when Some with (guild_id) %}
                 hx-post="/guilds/{{ guild_id }}/draft/members/{{ member.id }}" {% when None %}
@@ -104,11 +147,11 @@
 
     <div id="action-buttons">
         <button {% match guild.id %} {% when Some with (guild_id) %} hx-get="/guilds/{{ guild_id }}" {% when None %}
-            hx-get="/guilds" {% endmatch %} hx-target="#content" hs-push-url="true">
+            hx-get="/guilds" {% endmatch %} hx-target="#content" hx-push-url="true">
             Cancel
         </button>
         <button type="submit" id="submit-button" {% if should_swap_oob %} hx-swap-oob="true" {% endif %} {% if !is_valid
-            %} class="disabled" {% endif %}>
+            %} class="--disabled" {% endif %}>
             {% match guild.id %} {% when Some with (_) %} Update {% when None
             %} Create {% endmatch %}
         </button>

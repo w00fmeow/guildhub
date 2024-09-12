@@ -14,9 +14,12 @@
   <link rel="stylesheet" type="text/css" href="/static/js/toastify/toastify.min.css">
 
   <script src="/static/js/htmx.min.js"></script>
-  <script src="/static/js/toastify/toastify.js" async></script>
+  <script src="/static/js/sse.js"></script>
 
+  <script src="/static/js/toastify/toastify.js" async></script>
   <script src="/static/js/toast.js" async></script>
+  <script src="/static/js/sortable.js" async></script>
+
 
 
   <title>{% block title %}{{ title }}{% endblock %} | GUILDHUB</title>
@@ -26,6 +29,8 @@
 
 <body hx-boost="true">
   <div id="content">{% block content %}{% endblock %}</div>
+
+  <script src="/static/js/Sortable.js"></script>
 </body>
 
 </html>

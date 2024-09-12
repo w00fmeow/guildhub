@@ -1,0 +1,75 @@
+{% if guilds.len() == 0 %}
+<style>
+    #empty-state {
+        color: var(--color-disabled);
+        user-select: none;
+        opacity: 0.3;
+        font-weight: 200;
+        text-transform: uppercase;
+        text-align: center;
+
+        margin-top: 20%;
+    }
+</style>
+<h3 id="empty-state">
+    No guilds found
+</h3>
+{% endif %}
+
+<style>
+    #guild-card {
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        gap: 20px;
+        border: 1px solid var(--color-white);
+        cursor: pointer;
+
+        padding: 20px;
+        border-radius: 8px;
+
+        height: 120px;
+        max-width: 264px;
+        width: 90%;
+    }
+
+    #guild-name {
+        align-self: center;
+    }
+
+    #guild-info-row {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+    }
+</style>
+
+{% for guild in guilds %}
+<li id="guild-card" hx-get="/guilds/{{ guild.id }}" hx-target="#content" hx-select="#content" hx-swap="outerHTML"
+    hx-push-url="true">
+    <h4 id="guild-name">{{ guild.name }}</h4>
+
+    <div id="guild-info-row">
+        <p id="guild-info-row-members-count">
+            {% let members_count = guild.members.len() %}
+            {{ members_count }}
+            {% if members_count == 1 -%}
+            member
+            {% else -%}
+            members
+            {% endif -%}
+        </p>
+
+        {% if guild.topics_count >= 1 -%}
+        <p id="guild-info-row-topics-count">
+            {{ guild.topics_count }}
+            {% if guild.topics_count == 1 -%}
+            topic
+            {% else -%}
+            topics
+            {% endif -%}
+        </p>
+        {% endif -%}
+    </div>
+</li>
+{% endfor %}

@@ -1,0 +1,11 @@
+{% extends "authenticated-base.html" %}
+
+{% block title %}Propose new topic{% endblock %}
+
+{% block content %}
+
+{% call super() %}
+
+{% include "components/topic/topic-form.html" %}
+
+{% endblock %}

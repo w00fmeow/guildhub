@@ -1,0 +1,54 @@
+<li id="topic-{{ topic.id }}" data-id="{{ topic.id }}" {% if topic.is_upvoted_by_current_user %}
+    class="topic-card is-upvoted-by-me" {% else %} class="topic-card" {% endif %}
+    hx-get="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/card" hx-trigger="sse:topic-updated-{{ topic.id }}"
+    hx-swap="outerHTML" sse-swap="topic-deleted-{{ topic.id }}">
+
+    <div id="topic-first-row">
+        <p>{{ topic.text|trim }}</p>
+
+        {% if topic.is_created_by_current_user %}
+        <div id="action-buttons">
+
+            <div hx-get="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}" id="edit-topic-button" hx-push-url="true"
+                hx-target="#content" hx-select="#content" hx-swap="outerHTML" class="action-icon">
+            </div>
+
+            <div hx-delete="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}" id="delete-topic-button"
+                class=" action-icon">
+            </div>
+
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="topic-second-row">
+        <div id="user-container">
+            <img id="user-avatar" src="{{ topic.created_by_user.avatar_url }}">
+            </img>
+            <p id="username">
+                @{{ topic.created_by_user.username|lower }}
+            </p>
+        </div>
+
+        {% let upvotes_count = topic.upvoted_by_users.len() %}
+
+        <div id="upvotes-container" {% if topic.is_upvoted_by_current_user %} class="is-upvoted-by-me" {% else if
+            upvotes_count> 0 %}
+            class="has-upvotes"
+            {% else %}
+            class=""
+            {% endif %}
+            >
+
+            {% if upvotes_count > 0 %}
+            <h4 id="upvotes-count">{{ upvotes_count }}</h4>
+            {% endif %}
+
+            <img src="/static/images/arrow-up.svg" alt="Upvote icon" id="upvote-icon" class="action-icon" {% if
+                topic.is_upvoted_by_current_user %} hx-delete="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/vote"
+                {% else %} hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/vote" {% endif %}
+                hx-target="#topic-{{ topic.id }}" hx-swap="outerHTML" />
+
+        </div>
+    </div>
+</li>

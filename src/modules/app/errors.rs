@@ -1,37 +1,26 @@
-use actix_web::{error, http::StatusCode, HttpResponse};
-use derive_more::Display;
-use std::error::Error;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 
-#[derive(Debug, Display)]
-pub enum AppError {
-    #[display(fmt = "An internal error occurred. Please try again later.")]
-    InternalError,
-    #[display(fmt = "Validation error")]
-    ValidationError(String),
-}
+pub struct AppError(anyhow::Error);
 
-impl error::ResponseError for AppError {
-    fn error_response(&self) -> HttpResponse {
-        let message = match self {
-            AppError::InternalError => "An internal error occurred. Please try again later.",
-            AppError::ValidationError(message) => message,
-        };
-
-        HttpResponse::build(self.status_code())
-            .content_type("application/json")
-            .body(format_error_response(message))
-    }
-
-    fn status_code(&self) -> StatusCode {
-        match *self {
-            AppError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::ValidationError(_) => StatusCode::BAD_REQUEST,
-        }
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            // todo: html template
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
     }
 }
 
-impl Error for AppError {}
-
-pub fn format_error_response(message: &str) -> String {
-    format!(r#"{{"error":"{}"}}"#, message)
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
 }

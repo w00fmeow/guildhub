@@ -1,0 +1,11 @@
+{% extends "authenticated-base.html" %}
+
+{% block title %}Edit topic{% endblock %}
+
+{% block content %}
+
+{% call super() %}
+
+{% include "components/topic/topic-form.html" %}
+
+{% endblock %}

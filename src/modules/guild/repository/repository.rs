@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use bson::{doc, oid::ObjectId};
 use futures_util::TryStreamExt;
 use mongodb::{
-    options::IndexOptions,
+    options::{FindOptions, IndexOptions},
     results::{DeleteResult, InsertOneResult, UpdateResult},
     Collection, IndexModel,
 };
@@ -62,6 +62,12 @@ impl GuildsRepository {
 
         let collection: Collection<GuildDocument> = database.collection(&self.collection_name);
 
+        let find_options = FindOptions::builder()
+            .sort(doc! {
+                "created_at": -1
+            })
+            .build();
+
         let documents = collection
             .find(
                 doc! {
@@ -74,7 +80,7 @@ impl GuildsRepository {
                         }
                     ]
                 },
-                None,
+                Some(find_options),
             )
             .await?
             .try_collect()

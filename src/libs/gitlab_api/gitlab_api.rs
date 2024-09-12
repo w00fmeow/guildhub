@@ -44,7 +44,7 @@ impl GitlabApi {
     }
 
     fn get_base_api_url(&self) -> String {
-        format!("https://{}/api/v4/", self.domain)
+        format!("https://{}/api/v4", self.domain)
     }
 
     pub async fn get_group_members(
