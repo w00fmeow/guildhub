@@ -1,5 +1,5 @@
-function sseHandler(ev) {
-  if (ev?.detail?.type !== "topics-order-changed") return;
+function sseHandler(event) {
+  if (event?.detail?.type !== "topics-order-changed") return;
 
   const topicsList = document.getElementById("guild-topics");
 
@@ -13,7 +13,7 @@ function sseHandler(ev) {
     easing: "cubic-bezier(1, 0, 0, 1)",
   });
 
-  let ids = JSON.parse(ev.detail.data);
+  let ids = JSON.parse(event.detail.data);
 
   setTimeout(() => {
     sortableInstance.sort(ids, true);

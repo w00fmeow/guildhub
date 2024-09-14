@@ -1,5 +1,5 @@
 {% let is_first_page = current_page == 1 %}
-{% if topics.is_empty() && is_first_page %}
+{% if is_first_page %}
 <style>
     #empty-state {
         color: var(--color-disabled);
@@ -11,10 +11,16 @@
         margin-top: 15%;
         align-self: center;
     }
+
+    #empty-state.hidden {
+        display: none;
+    }
 </style>
-<h3 id="empty-state">
-    No topics created yet
-</h3>
+<li id="empty-state" class="not-sortable {% if !topics.is_empty() %} hidden {% endif %}">
+    <h3>
+        No topics created yet
+    </h3>
+</li>
 {% endif %}
 
 

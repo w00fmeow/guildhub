@@ -43,7 +43,34 @@
     }
 </style>
 
-<div id="guild-container" hx-ext="sse" sse-connect="/guilds/{{ guild_id }}/events">
+<script>
+    function onSseMessage() {
+        const guildContainer = document.getElementById("guild-container");
+
+        if (event?.detail?.type === "topic-created") {
+
+            const emptyStateElement = guildContainer.querySelector('#empty-state');
+
+            htmx.addClass(emptyStateElement, "hidden");
+        } else if (event?.detail?.type?.startsWith("topic-deleted")) {
+            const existingCardsCount = guildContainer.querySelectorAll('.topic-card').length;
+
+            if (existingCardsCount === 1) {
+                const emptyStateElement = guildContainer.querySelector('#empty-state');
+                htmx.removeClass(emptyStateElement, "hidden");
+            }
+
+
+            const deleteBtn = event.detail.elt.querySelector("#delete-topic-button");
+
+            if ([...deleteBtn.classList].includes("htmx-request")) {
+                event.preventDefault()
+            }
+        }
+    }
+</script>
+<div id="guild-container" hx-ext="sse" sse-connect="/guilds/{{ guild_id }}/events"
+    hx-on::sse-before-message="onSseMessage()">
     {% include "components/guild/guild-overview.html" %}
 
 

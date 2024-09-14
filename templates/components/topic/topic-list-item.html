@@ -14,7 +14,7 @@
             </div>
 
             <div hx-delete="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}" id="delete-topic-button"
-                class=" action-icon">
+                hx-target="#topic-{{ topic.id }}" hx-swap="delete" class=" action-icon">
             </div>
 
         </div>
