@@ -1,21 +1,5 @@
 {% let is_first_page = current_page == 1 %}
 {% if is_first_page %}
-<style>
-    #empty-state {
-        color: var(--color-disabled);
-        user-select: none;
-        opacity: 0.3;
-        font-weight: 200;
-        text-transform: uppercase;
-
-        margin-top: 15%;
-        align-self: center;
-    }
-
-    #empty-state.hidden {
-        display: none;
-    }
-</style>
 <li id="empty-state" class="not-sortable {% if !topics.is_empty() %} hidden {% endif %}">
     <h3>
         No topics created yet

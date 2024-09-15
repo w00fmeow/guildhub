@@ -35,6 +35,7 @@
         flex-direction: column;
         width: 100%;
         gap: 10px;
+        padding-bottom: 20px;
     }
 
     #guild-container {
@@ -52,6 +53,7 @@
             const emptyStateElement = guildContainer.querySelector('#empty-state');
 
             htmx.addClass(emptyStateElement, "hidden");
+
         } else if (event?.detail?.type?.startsWith("topic-deleted")) {
             const existingCardsCount = guildContainer.querySelectorAll('.topic-card').length;
 
@@ -66,6 +68,27 @@
             if ([...deleteBtn.classList].includes("htmx-request")) {
                 event.preventDefault()
             }
+        } else if (event?.detail?.type === "topics-order-changed") {
+            event.preventDefault();
+
+            const topicsList = document.getElementById("guild-topics");
+
+            if (!topicsList) return;
+
+            const sortableInstance = new Sortable(topicsList, {
+                disabled: true,
+                sort: false,
+                animation: 400,
+                filter: ".not-sortable",
+                easing: "cubic-bezier(1, 0, 0, 1)",
+            });
+
+            let ids = JSON.parse(event.detail.data);
+
+            setTimeout(() => {
+                sortableInstance.sort(ids, true);
+            }, 300);
+
         }
     }
 </script>
@@ -142,6 +165,12 @@
             justify-content: space-between;
         }
 
+        #topic-text-content {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         #topic-second-row {
             display: flex;
             justify-content: space-between;
@@ -175,6 +204,21 @@
 
         #upvotes-container.is-upvoted-by-me #upvote-icon {
             content: url("/static/images/arrow-up-filled.svg");
+        }
+
+        #empty-state {
+            color: var(--color-disabled);
+            user-select: none;
+            opacity: 0.3;
+            font-weight: 200;
+            text-transform: uppercase;
+
+            margin-top: 15%;
+            align-self: center;
+        }
+
+        #empty-state.hidden {
+            display: none;
         }
     </style>
     <ul id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics?page=1" hx-trigger="load">

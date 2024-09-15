@@ -4,7 +4,7 @@
     hx-swap="outerHTML" sse-swap="topic-deleted-{{ topic.id }}">
 
     <div id="topic-first-row">
-        <p>{{ topic.text|trim }}</p>
+        <p id="topic-text-content">{{ topic.text|trim }}</p>
 
         {% if topic.is_created_by_current_user %}
         <div id="action-buttons">
