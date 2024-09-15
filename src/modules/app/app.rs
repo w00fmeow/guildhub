@@ -55,7 +55,8 @@ impl App {
 
         let events_channel = broadcast::channel::<Event>(10);
 
-        let database = Arc::new(MongoDatabase::new(configuration.mongo.clone()));
+        let database =
+            Arc::new(MongoDatabase::new(configuration.mongo.clone()));
 
         let database_ping_ref = Arc::clone(&database);
 
@@ -90,23 +91,27 @@ impl App {
                     .insert_member_into_cache(Member::default())
                     .await
             }
-            _ => match gitlab_service.refresh_members_cache().await {
-                Err(err) => {
-                    panic!("Failed to load members cache: {err}");
+            _ => {
+                match gitlab_service.refresh_members_cache().await {
+                    Err(err) => {
+                        panic!("Failed to load members cache: {err}");
+                    }
+                    _ => {
+                        info!("In memory cache for gitlab members is ready to go 🔥")
+                    }
                 }
-                _ => {
-                    info!("In memory cache for gitlab members is ready to go 🔥")
-                }
-            },
+            }
         }
 
-        let topics_repository = Arc::new(TopicsRepository::new(database.clone()).await);
+        let topics_repository =
+            Arc::new(TopicsRepository::new(database.clone()).await);
         let topics_service = Arc::new(TopicsService::new(
             gitlab_service.clone(),
             topics_repository.clone(),
         ));
 
-        let guilds_repository = Arc::new(GuildsRepository::new(database.clone()).await);
+        let guilds_repository =
+            Arc::new(GuildsRepository::new(database.clone()).await);
         let guilds_service = Arc::new(GuildsService::new(
             topics_service.clone(),
             guilds_repository.clone(),
@@ -128,7 +133,8 @@ impl App {
         let guilds_service_ref = guilds_service.clone();
 
         tokio::spawn(async move {
-            let mut guild_events_receiver = guilds_service_ref.events_channel.0.subscribe();
+            let mut guild_events_receiver =
+                guilds_service_ref.events_channel.0.subscribe();
 
             loop {
                 match guild_events_receiver.recv().await {
@@ -145,7 +151,8 @@ impl App {
         let topics_service_ref = topics_service.clone();
 
         tokio::spawn(async move {
-            let mut topic_events_receiver = topics_service_ref.events_channel.0.subscribe();
+            let mut topic_events_receiver =
+                topics_service_ref.events_channel.0.subscribe();
 
             loop {
                 match topic_events_receiver.recv().await {
@@ -172,7 +179,8 @@ impl App {
     }
 
     pub fn get_app_router(app: Arc<App>) -> Router {
-        let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("static");
+        let assets_dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("static");
 
         let guild_router = Router::new()
             .route("/", get(guild::get_guilds_page))
@@ -222,7 +230,10 @@ impl App {
                 "/:guild_id/topics/:topic_id/vote",
                 delete(topic::remove_vote_from_topic),
             )
-            .route_layer(middleware::from_fn_with_state(app.clone(), require_auth));
+            .route_layer(middleware::from_fn_with_state(
+                app.clone(),
+                require_auth,
+            ));
 
         let public_router = Router::new()
             .route("/", get(controller::index))
@@ -235,7 +246,10 @@ impl App {
             .merge(public_router)
             .nest("/guilds", guild_router)
             .nest_service("/static", ServeDir::new(assets_dir))
-            .route_layer(middleware::from_fn_with_state(app.clone(), optional_auth))
+            .route_layer(middleware::from_fn_with_state(
+                app.clone(),
+                optional_auth,
+            ))
             .with_state(app)
             .layer(TraceLayer::new_for_http())
     }

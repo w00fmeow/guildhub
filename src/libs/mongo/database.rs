@@ -43,7 +43,8 @@ impl MongoDatabase {
     ) -> Result<()> {
         let database = self.get_database_client()?;
 
-        let existing_collections = database.list_collection_names(None).await?;
+        let existing_collections =
+            database.list_collection_names(None).await?;
 
         if !existing_collections.contains(&collection_name.to_string()) {
             database.create_collection(collection_name, None).await?;
@@ -58,9 +59,11 @@ impl MongoDatabase {
             .map(|index| index.clone().options.unwrap().name.unwrap())
             .collect();
 
-        let indexes_to_remove = existing_indexes.iter().filter(|existing_index| {
-            !new_index_names.contains(&existing_index) && existing_index.as_str() != "_id_"
-        });
+        let indexes_to_remove =
+            existing_indexes.iter().filter(|existing_index| {
+                !new_index_names.contains(&existing_index)
+                    && existing_index.as_str() != "_id_"
+            });
 
         for index_to_remove in indexes_to_remove {
             match collection.drop_index(index_to_remove, None).await {

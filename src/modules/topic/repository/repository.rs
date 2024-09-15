@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::{libs::mongo::MongoDatabase, modules::topic::types::PaginationParameters};
+use crate::{
+    libs::mongo::MongoDatabase, modules::topic::types::PaginationParameters,
+};
 use anyhow::{Context, Result};
 use bson::{doc, oid::ObjectId, DateTime, Document};
 use futures::TryStreamExt;
@@ -33,7 +35,9 @@ impl TopicsRepository {
         let indexes = vec![("guild_id", doc! {"created_by_user_id":1})]
             .into_iter()
             .map(|(index_name, doc)| {
-                let options = IndexOptions::builder().name(index_name.to_string()).build();
+                let options = IndexOptions::builder()
+                    .name(index_name.to_string())
+                    .build();
 
                 IndexModel::builder().keys(doc).options(options).build()
             })
@@ -44,10 +48,14 @@ impl TopicsRepository {
             .await
     }
 
-    pub async fn insert_topic_document(&self, document: TopicDocument) -> Result<InsertOneResult> {
+    pub async fn insert_topic_document(
+        &self,
+        document: TopicDocument,
+    ) -> Result<InsertOneResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let result = collection
             .insert_one(document, None)
@@ -64,7 +72,8 @@ impl TopicsRepository {
     ) -> Result<Vec<TopicDocument>> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let mut pipeline = self.get_topics_aggregation_pipeline(guild_id);
 
@@ -76,7 +85,8 @@ impl TopicsRepository {
         "$limit": limit as u32
         });
 
-        let options: AggregateOptions = AggregateOptions::builder().allow_disk_use(true).build();
+        let options: AggregateOptions =
+            AggregateOptions::builder().allow_disk_use(true).build();
 
         let mut cursor = collection.aggregate(pipeline, options).await?;
 
@@ -92,10 +102,14 @@ impl TopicsRepository {
         Ok(results)
     }
 
-    pub async fn get_topic(&self, id: ObjectId) -> Result<Option<TopicDocument>> {
+    pub async fn get_topic(
+        &self,
+        id: ObjectId,
+    ) -> Result<Option<TopicDocument>> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let query = doc! {
             "_id": id,
@@ -106,10 +120,15 @@ impl TopicsRepository {
         Ok(document)
     }
 
-    pub async fn delete_topic(&self, id: ObjectId, user_id: Option<usize>) -> Result<DeleteResult> {
+    pub async fn delete_topic(
+        &self,
+        id: ObjectId,
+        user_id: Option<usize>,
+    ) -> Result<DeleteResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let query = match user_id {
             Some(user_id) => doc! {
@@ -135,7 +154,8 @@ impl TopicsRepository {
     ) -> Result<UpdateResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let query = doc! {
             "_id": id,
@@ -167,7 +187,8 @@ impl TopicsRepository {
 
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let pipeline = vec![
             doc! {
@@ -191,7 +212,8 @@ impl TopicsRepository {
             },
         ];
 
-        let options: AggregateOptions = AggregateOptions::builder().allow_disk_use(true).build();
+        let options: AggregateOptions =
+            AggregateOptions::builder().allow_disk_use(true).build();
 
         let mut cursor = collection.aggregate(pipeline, options).await?;
 
@@ -207,10 +229,15 @@ impl TopicsRepository {
         Ok(results)
     }
 
-    pub async fn upvote_topic(&self, id: ObjectId, user_id: usize) -> Result<UpdateResult> {
+    pub async fn upvote_topic(
+        &self,
+        id: ObjectId,
+        user_id: usize,
+    ) -> Result<UpdateResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let query = doc! {
             "_id": id,
@@ -234,7 +261,8 @@ impl TopicsRepository {
     ) -> Result<UpdateResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let query = doc! {
             "guild_id": guild_id,
@@ -258,7 +286,8 @@ impl TopicsRepository {
     ) -> Result<Option<TopicDocument>> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let query = doc! {
             "guild_id": guild_id,
@@ -270,7 +299,10 @@ impl TopicsRepository {
         Ok(document)
     }
 
-    fn get_topics_aggregation_pipeline(&self, guild_id: &ObjectId) -> Vec<Document> {
+    fn get_topics_aggregation_pipeline(
+        &self,
+        guild_id: &ObjectId,
+    ) -> Vec<Document> {
         vec![
             doc! {
             "$match": {
@@ -291,10 +323,14 @@ impl TopicsRepository {
         ]
     }
 
-    pub async fn get_topic_ids_sorted(&self, guild_id: &ObjectId) -> Result<Vec<String>> {
+    pub async fn get_topic_ids_sorted(
+        &self,
+        guild_id: &ObjectId,
+    ) -> Result<Vec<String>> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<TopicDocument> = database.collection(&self.collection_name);
+        let collection: Collection<TopicDocument> =
+            database.collection(&self.collection_name);
 
         let mut pipeline = self.get_topics_aggregation_pipeline(guild_id);
 
@@ -304,14 +340,16 @@ impl TopicsRepository {
                 }
         });
 
-        let options: AggregateOptions = AggregateOptions::builder().allow_disk_use(true).build();
+        let options: AggregateOptions =
+            AggregateOptions::builder().allow_disk_use(true).build();
 
         let mut cursor = collection.aggregate(pipeline, options).await?;
 
         let mut results = Vec::new();
 
         while let Some(result_doc) = cursor.try_next().await? {
-            let topic: TopicDocumentId = bson::from_bson(bson::Bson::Document(result_doc))?;
+            let topic: TopicDocumentId =
+                bson::from_bson(bson::Bson::Document(result_doc))?;
 
             results.push(topic._id.to_hex());
         }

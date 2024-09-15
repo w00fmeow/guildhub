@@ -9,14 +9,18 @@ enum StringOrInt<T> {
     Number(T),
 }
 
-pub fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+pub fn deserialize_number_from_string<'de, T, D>(
+    deserializer: D,
+) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
     T: FromStr + serde::Deserialize<'de>,
     <T as FromStr>::Err: Display,
 {
     match StringOrInt::<T>::deserialize(deserializer)? {
-        StringOrInt::String(s) => s.parse::<T>().map_err(serde::de::Error::custom),
+        StringOrInt::String(s) => {
+            s.parse::<T>().map_err(serde::de::Error::custom)
+        }
         StringOrInt::Number(i) => Ok(i),
     }
 }
@@ -27,7 +31,10 @@ pub mod chrono_date {
 
     const FORMAT: &'static str = "%Y-%m-%d %H:%M:%S";
 
-    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(
+        date: &DateTime<Utc>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -35,14 +42,16 @@ pub mod chrono_date {
         serializer.serialize_str(&s)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<DateTime<Utc>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
 
-        let naive_datetime =
-            NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)?;
+        let naive_datetime = NaiveDateTime::parse_from_str(&s, FORMAT)
+            .map_err(serde::de::Error::custom)?;
         let utc_datetime = Utc.from_utc_datetime(&naive_datetime);
 
         Ok(utc_datetime)

@@ -31,10 +31,8 @@ pub async fn optional_auth(
         }
     };
 
-    let member = state
-        .gitlab_service
-        .get_cached_member(&token_claims.sub)
-        .await;
+    let member =
+        state.gitlab_service.get_cached_member(&token_claims.sub).await;
 
     if member.is_none() {
         return next.run(request).await;

@@ -23,16 +23,19 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(
+        req: Request,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
         let body = Bytes::from_request(req, state)
             .await
             .map_err(IntoResponse::into_response)?;
 
         let config = Config::new(10, false);
 
-        let form: T = config
-            .deserialize_bytes(&body)
-            .map_err(|err| AppError::from(anyhow::Error::new(err)).into_response())?;
+        let form: T = config.deserialize_bytes(&body).map_err(|err| {
+            AppError::from(anyhow::Error::new(err)).into_response()
+        })?;
 
         Ok(Form(form))
     }

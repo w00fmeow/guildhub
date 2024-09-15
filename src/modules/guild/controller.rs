@@ -5,8 +5,8 @@ use crate::{
     },
     modules::{
         app::{
-            app::App, user_extractor::Authenticated, AppError, Event as AppEvent, HxTriggerEvent,
-            ToastLevel,
+            app::App, user_extractor::Authenticated, AppError,
+            Event as AppEvent, HxTriggerEvent, ToastLevel,
         },
         guild::GuildEvent,
         topic::types::{TopicEvent, TopicsListItemTemplate},
@@ -28,7 +28,9 @@ use axum::{
 use futures::Stream;
 use mime;
 use serde::Deserialize;
-use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, convert::Infallible, sync::Arc, time::Duration,
+};
 use tokio::{select, time::sleep};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
@@ -36,11 +38,14 @@ use tracing::{debug, error, info};
 use validator::Validate;
 
 use super::{
-    CreateGuildFormTemplate, EditGuildFormTemplate, GuildDraft, GuildFormDTO, GuildIdParameter,
-    GuildListItemsTemplate, GuildOverviewTemplate, GuildTemplate, GuildsListTemplate,
+    CreateGuildFormTemplate, EditGuildFormTemplate, GuildDraft, GuildFormDTO,
+    GuildIdParameter, GuildListItemsTemplate, GuildOverviewTemplate,
+    GuildTemplate, GuildsListTemplate,
 };
 
-pub async fn get_guilds_page(Authenticated(user): Authenticated) -> impl IntoResponse {
+pub async fn get_guilds_page(
+    Authenticated(user): Authenticated,
+) -> impl IntoResponse {
     GuildsListTemplate { user }
 }
 
@@ -53,7 +58,9 @@ pub async fn get_guilds_list(
     Ok(GuildListItemsTemplate { guilds }.into_response())
 }
 
-pub async fn get_create_guild_form(Authenticated(user): Authenticated) -> impl IntoResponse {
+pub async fn get_create_guild_form(
+    Authenticated(user): Authenticated,
+) -> impl IntoResponse {
     CreateGuildFormTemplate {
         user,
         guild: GuildDraft::default(),
@@ -159,7 +166,8 @@ pub async fn create_guild(
         Ok(()) => {}
     };
 
-    let created_guild = app.guilds_service.create_new_guild(form, user).await?;
+    let created_guild =
+        app.guilds_service.create_new_guild(form, user).await?;
 
     let event = HxTriggerEvent::ShowToast {
         level: ToastLevel::Info,
@@ -214,10 +222,8 @@ pub async fn insert_new_member(
         None => return Err(anyhow!("Failed to find user").into()),
     };
 
-    let mut existing_members: Vec<Member> = app
-        .gitlab_service
-        .get_cached_members_by_ids(&form.member_ids)
-        .await;
+    let mut existing_members: Vec<Member> =
+        app.gitlab_service.get_cached_members_by_ids(&form.member_ids).await;
 
     if !form.member_ids.contains(&parameters.member_id) {
         existing_members.insert(0, member_to_insert)
@@ -289,14 +295,16 @@ pub async fn get_guild_overview(
                 swap: "outerHTML".to_string(),
             };
 
-            let location = HeaderValue::from_str(&serde_json::to_string(&location)?)?;
+            let location =
+                HeaderValue::from_str(&serde_json::to_string(&location)?)?;
 
             let event = HxTriggerEvent::ShowToast {
                 level: ToastLevel::Warning,
                 message: "Failed to fetch guild".to_string(),
             };
 
-            let event = HeaderValue::from_str(&serde_json::to_string(&event)?)?;
+            let event =
+                HeaderValue::from_str(&serde_json::to_string(&event)?)?;
 
             let mut headers = HeaderMap::new();
 
@@ -325,9 +333,7 @@ pub async fn delete_guild(
     Path(parameters): Path<GuildIdParameter>,
     State(app): State<Arc<App>>,
 ) -> Result<impl IntoResponse, AppError> {
-    app.guilds_service
-        .delete_guild(user.id, &parameters.guild_id)
-        .await?;
+    app.guilds_service.delete_guild(user.id, &parameters.guild_id).await?;
 
     let location = Location {
         path: "/guilds".to_string(),
@@ -343,7 +349,8 @@ pub async fn delete_guild(
         message: "Guild was deleted successfully".to_string(),
     };
 
-    let event: HeaderValue = HeaderValue::from_str(&serde_json::to_string(&event)?)?;
+    let event: HeaderValue =
+        HeaderValue::from_str(&serde_json::to_string(&event)?)?;
 
     let mut headers = HeaderMap::new();
 
@@ -376,14 +383,16 @@ pub async fn get_edit_guild_form(
                 swap: "outerHTML".to_string(),
             };
 
-            let location = HeaderValue::from_str(&serde_json::to_string(&location)?)?;
+            let location =
+                HeaderValue::from_str(&serde_json::to_string(&location)?)?;
 
             let event = HxTriggerEvent::ShowToast {
                 level: ToastLevel::Warning,
                 message: "Guild was not found".to_string(),
             };
 
-            let event: HeaderValue = HeaderValue::from_str(&serde_json::to_string(&event)?)?;
+            let event: HeaderValue =
+                HeaderValue::from_str(&serde_json::to_string(&event)?)?;
 
             let mut headers = HeaderMap::new();
             headers.insert(
@@ -451,7 +460,8 @@ pub async fn update_guild(
         message: "Guild was updated".to_string(),
     };
 
-    let event: HeaderValue = HeaderValue::from_str(&serde_json::to_string(&event)?)?;
+    let event: HeaderValue =
+        HeaderValue::from_str(&serde_json::to_string(&event)?)?;
 
     let location = Location {
         path: format!("/guilds/{}", updated_guild.id),
@@ -460,7 +470,8 @@ pub async fn update_guild(
         swap: "outerHTML".to_string(),
     };
 
-    let location: HeaderValue = HeaderValue::from_str(&serde_json::to_string(&location)?)?;
+    let location: HeaderValue =
+        HeaderValue::from_str(&serde_json::to_string(&location)?)?;
 
     let mut headers = HeaderMap::new();
 

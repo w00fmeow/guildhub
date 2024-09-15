@@ -15,14 +15,15 @@ pub struct GitlabService {
 }
 
 impl GitlabService {
-    pub fn new(gitlab_api: GitlabApi, group_id: String, cache_ttl: Duration) -> Self {
-        let cache: Cache<usize, Member> = Cache::builder().time_to_live(cache_ttl).build();
+    pub fn new(
+        gitlab_api: GitlabApi,
+        group_id: String,
+        cache_ttl: Duration,
+    ) -> Self {
+        let cache: Cache<usize, Member> =
+            Cache::builder().time_to_live(cache_ttl).build();
 
-        Self {
-            gitlab_api,
-            group_id,
-            cache,
-        }
+        Self { gitlab_api, group_id, cache }
     }
 
     pub async fn fetch_all_group_members(&self) -> Result<Vec<Member>> {
@@ -66,7 +67,8 @@ impl GitlabService {
     }
 
     pub async fn get_all_cached_members(&self) -> Vec<Member> {
-        let members: Vec<Member> = self.cache.iter().map(|(_, member)| member).collect();
+        let members: Vec<Member> =
+            self.cache.iter().map(|(_, member)| member).collect();
 
         members
     }
@@ -82,8 +84,12 @@ impl GitlabService {
         auth_url.to_string()
     }
 
-    pub async fn get_cached_members_by_ids(&self, user_ids: &Vec<usize>) -> Vec<Member> {
-        let members = user_ids.iter().map(|id: &usize| self.get_cached_member(id));
+    pub async fn get_cached_members_by_ids(
+        &self,
+        user_ids: &Vec<usize>,
+    ) -> Vec<Member> {
+        let members =
+            user_ids.iter().map(|id: &usize| self.get_cached_member(id));
 
         let members = join_all(members).await;
 

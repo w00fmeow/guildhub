@@ -41,7 +41,9 @@ pub async fn health(State(app): State<Arc<App>>) -> impl IntoResponse {
     return response;
 }
 
-pub async fn index(MaybeAuthenticated(user): MaybeAuthenticated) -> impl IntoResponse {
+pub async fn index(
+    MaybeAuthenticated(user): MaybeAuthenticated,
+) -> impl IntoResponse {
     if user.is_some() {
         return Redirect::to("/guilds");
     }
@@ -49,13 +51,14 @@ pub async fn index(MaybeAuthenticated(user): MaybeAuthenticated) -> impl IntoRes
     Redirect::to("/login")
 }
 
-pub async fn logout(State(app): State<Arc<App>>) -> Result<impl IntoResponse, AppError> {
+pub async fn logout(
+    State(app): State<Arc<App>>,
+) -> Result<impl IntoResponse, AppError> {
     let cookie = build_auth_cookie("").expires(OffsetDateTime::now_utc());
 
-    let mut response = LoginTemplate {
-        gitlab_oath_url: app.gitlab_service.get_oath_url(),
-    }
-    .into_response();
+    let mut response =
+        LoginTemplate { gitlab_oath_url: app.gitlab_service.get_oath_url() }
+            .into_response();
 
     let cookie = HeaderValue::from_str(&cookie.to_string())?;
 
@@ -78,10 +81,8 @@ pub async fn login(
         return Redirect::temporary("/guilds").into_response();
     }
 
-    LoginTemplate {
-        gitlab_oath_url: app.gitlab_service.get_oath_url(),
-    }
-    .into_response()
+    LoginTemplate { gitlab_oath_url: app.gitlab_service.get_oath_url() }
+        .into_response()
 }
 
 #[derive(Template)]
@@ -103,10 +104,7 @@ pub struct GitlabAuthRequest {
 }
 
 pub fn build_auth_cookie(token: &str) -> CookieBuilder {
-    Cookie::build(("token", token))
-        .path("/")
-        .secure(true)
-        .http_only(true)
+    Cookie::build(("token", token)).path("/").secure(true).http_only(true)
 }
 
 pub async fn gitlab_auth(
@@ -123,15 +121,19 @@ pub async fn gitlab_auth(
         .await
     {
         Ok(user) => {
-            if let Some(user) = app.gitlab_service.get_cached_member(&user.id).await {
+            if let Some(user) =
+                app.gitlab_service.get_cached_member(&user.id).await
+            {
                 if let Ok(token) = app.auth_service.create_token(user.id) {
                     let cookie = build_auth_cookie(&token);
 
-                    let mut response = Redirect::temporary("/guilds").into_response();
+                    let mut response =
+                        Redirect::temporary("/guilds").into_response();
 
-                    response
-                        .headers_mut()
-                        .insert(SET_COOKIE, HeaderValue::from_str(&cookie.to_string())?);
+                    response.headers_mut().insert(
+                        SET_COOKIE,
+                        HeaderValue::from_str(&cookie.to_string())?,
+                    );
 
                     return Ok(response);
                 }

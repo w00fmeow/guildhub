@@ -38,7 +38,8 @@ impl TryFrom<Topic> for TopicDocument {
             _id: ObjectId::from_str(&topic.id)?,
             guild_id: ObjectId::from_str(&topic.guild_id)?,
             text: topic.text,
-            will_be_presented_by_the_creator: topic.will_be_presented_by_the_creator,
+            will_be_presented_by_the_creator: topic
+                .will_be_presented_by_the_creator,
             upvoted_by_users_ids: topic.upvoted_by_users_ids,
             created_by_user_id: topic.created_by_user_id,
             updated_at: bson::DateTime::from_chrono(topic.updated_at),
@@ -53,7 +54,8 @@ impl From<TopicDocument> for Topic {
             id: document._id.to_hex(),
             guild_id: document.guild_id.to_hex(),
             text: document.text,
-            will_be_presented_by_the_creator: document.will_be_presented_by_the_creator,
+            will_be_presented_by_the_creator: document
+                .will_be_presented_by_the_creator,
             upvoted_by_users_ids: document.upvoted_by_users_ids,
             created_by_user_id: document.created_by_user_id,
             updated_at: document.updated_at.to_chrono(),
@@ -89,7 +91,8 @@ impl From<TopicPersonalized> for Topic {
                 .into_iter()
                 .map(|member| member.id)
                 .collect(),
-            will_be_presented_by_the_creator: topic.will_be_presented_by_the_creator,
+            will_be_presented_by_the_creator: topic
+                .will_be_presented_by_the_creator,
             created_by_user_id: topic.created_by_user.id,
             updated_at: topic.updated_at,
             created_at: topic.created_at,

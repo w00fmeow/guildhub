@@ -1,6 +1,8 @@
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{
+    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -24,11 +26,7 @@ impl AuthService {
         let now = Utc::now();
         let iat = now.timestamp() as usize;
         let exp = (now + self.expire_in).timestamp() as usize;
-        let claims: TokenClaims = TokenClaims {
-            sub: user_id,
-            exp,
-            iat,
-        };
+        let claims: TokenClaims = TokenClaims { sub: user_id, exp, iat };
 
         let token = encode(
             &Header::default(),
@@ -39,7 +37,10 @@ impl AuthService {
         Ok(token)
     }
 
-    pub fn decode_token<T: Into<String>>(&self, token: T) -> Result<TokenClaims> {
+    pub fn decode_token<T: Into<String>>(
+        &self,
+        token: T,
+    ) -> Result<TokenClaims> {
         let decoded = decode::<TokenClaims>(
             &token.into(),
             &DecodingKey::from_secret(self.secret.as_bytes()),
@@ -49,7 +50,10 @@ impl AuthService {
         Ok(decoded.claims)
     }
 
-    pub fn refresh_token_if_needed(&self, claims: TokenClaims) -> Result<Option<String>> {
+    pub fn refresh_token_if_needed(
+        &self,
+        claims: TokenClaims,
+    ) -> Result<Option<String>> {
         let issued_at = match DateTime::from_timestamp(claims.iat as i64, 0) {
             Some(issued_at) => issued_at,
             None => return Ok(None),

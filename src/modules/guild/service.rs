@@ -11,7 +11,9 @@ use crate::{
     modules::{gitlab::GitlabService, topic::TopicsService},
 };
 
-use super::{Guild, GuildEvent, GuildFormDTO, GuildsRepository, UpdateGuildPayload};
+use super::{
+    Guild, GuildEvent, GuildFormDTO, GuildsRepository, UpdateGuildPayload,
+};
 
 pub struct GuildsService {
     pub events_channel: (Sender<GuildEvent>, Receiver<GuildEvent>),
@@ -59,24 +61,26 @@ impl GuildsService {
             .insert_guild_document(guild.clone().try_into()?)
             .await?;
 
-        let created_id = insert_result.inserted_id.as_object_id().ok_or_else(|| {
-            anyhow::anyhow!("Failed to convert object id of created guild document")
-        })?;
+        let created_id =
+            insert_result.inserted_id.as_object_id().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Failed to convert object id of created guild document"
+                )
+            })?;
 
-        let created_guild = match self
-            .get_guild(created_by_user, &created_id.to_hex())
-            .await?
-        {
-            Some(guild) => guild,
-            None => {
-                error!(
-                    "Failed to find created document by id {}",
-                    insert_result.inserted_id
-                );
+        let created_guild =
+            match self.get_guild(created_by_user, &created_id.to_hex()).await?
+            {
+                Some(guild) => guild,
+                None => {
+                    error!(
+                        "Failed to find created document by id {}",
+                        insert_result.inserted_id
+                    );
 
-                bail!("Guild document was not found");
-            }
-        };
+                    bail!("Guild document was not found");
+                }
+            };
 
         let _ = self
             .events_channel
@@ -86,13 +90,18 @@ impl GuildsService {
         Ok(created_guild)
     }
 
-    pub async fn get_guild(&self, user: Member, guild_id: &str) -> Result<Option<Guild>> {
+    pub async fn get_guild(
+        &self,
+        user: Member,
+        guild_id: &str,
+    ) -> Result<Option<Guild>> {
         let guild_id: ObjectId = ObjectId::from_str(guild_id)?;
 
-        let guild_document = match self.repository.get_guild(guild_id, Some(user.id)).await? {
-            None => return Ok(None),
-            Some(document) => document,
-        };
+        let guild_document =
+            match self.repository.get_guild(guild_id, Some(user.id)).await? {
+                None => return Ok(None),
+                Some(document) => document,
+            };
 
         let members = self
             .gitlab_service
@@ -104,7 +113,8 @@ impl GuildsService {
             .get_topics_count_by_guild_ids(vec![guild_id])
             .await?;
 
-        let topics_count = topics_count.remove(&guild_id.to_hex()).unwrap_or(0);
+        let topics_count =
+            topics_count.remove(&guild_id.to_hex()).unwrap_or(0);
 
         Ok(Some(Guild {
             id: guild_document._id.to_hex(),
@@ -120,10 +130,8 @@ impl GuildsService {
     pub async fn get_guilds(&self, user_id: usize) -> Result<Vec<Guild>> {
         let documents = self.repository.get_guilds(user_id).await?;
 
-        let document_ids = documents
-            .iter()
-            .map(|document| document._id.clone())
-            .collect();
+        let document_ids =
+            documents.iter().map(|document| document._id.clone()).collect();
 
         let mut all_members_ids: Vec<usize> = Vec::new();
 
@@ -170,7 +178,9 @@ impl GuildsService {
                     ))
                 }
 
-                let topics_count = all_topics_count.remove(&document._id.to_hex()).unwrap_or(0);
+                let topics_count = all_topics_count
+                    .remove(&document._id.to_hex())
+                    .unwrap_or(0);
 
                 return Ok(Guild {
                     id: document._id.to_hex(),
@@ -187,7 +197,11 @@ impl GuildsService {
         Ok(guilds?)
     }
 
-    pub async fn delete_guild(&self, user_id: usize, guild_id: &str) -> Result<()> {
+    pub async fn delete_guild(
+        &self,
+        user_id: usize,
+        guild_id: &str,
+    ) -> Result<()> {
         let result = self
             .repository
             .delete_guild(ObjectId::from_str(guild_id)?, Some(user_id))
@@ -224,14 +238,21 @@ impl GuildsService {
 
         let update_result = self
             .repository
-            .update_guild(ObjectId::from_str(&guild_id)?, updated_by_user.id, payload)
+            .update_guild(
+                ObjectId::from_str(&guild_id)?,
+                updated_by_user.id,
+                payload,
+            )
             .await?;
 
         if update_result.modified_count == 0 {
             bail!("Failed to update guild")
         }
 
-        let updated_guild = match self.get_guild(updated_by_user, &guild_id).await? {
+        let updated_guild = match self
+            .get_guild(updated_by_user, &guild_id)
+            .await?
+        {
             Some(guild) => guild,
             None => {
                 error!("Failed to find updated document by id {}", guild_id);

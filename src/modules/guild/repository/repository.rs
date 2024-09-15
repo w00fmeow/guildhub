@@ -30,24 +30,31 @@ impl GuildsRepository {
     }
 
     pub async fn set_indexes(&self) -> Result<()> {
-        let indexes = vec![("created_by_user_id", doc! {"created_by_user_id":1})]
-            .into_iter()
-            .map(|(index_name, doc)| {
-                let options = IndexOptions::builder().name(index_name.to_string()).build();
+        let indexes =
+            vec![("created_by_user_id", doc! {"created_by_user_id":1})]
+                .into_iter()
+                .map(|(index_name, doc)| {
+                    let options = IndexOptions::builder()
+                        .name(index_name.to_string())
+                        .build();
 
-                IndexModel::builder().keys(doc).options(options).build()
-            })
-            .collect();
+                    IndexModel::builder().keys(doc).options(options).build()
+                })
+                .collect();
 
         self.database
             .create_indexes::<GuildDocument>(&self.collection_name, indexes)
             .await
     }
 
-    pub async fn insert_guild_document(&self, document: GuildDocument) -> Result<InsertOneResult> {
+    pub async fn insert_guild_document(
+        &self,
+        document: GuildDocument,
+    ) -> Result<InsertOneResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<GuildDocument> = database.collection(&self.collection_name);
+        let collection: Collection<GuildDocument> =
+            database.collection(&self.collection_name);
 
         let result = collection
             .insert_one(document, None)
@@ -57,10 +64,14 @@ impl GuildsRepository {
         Ok(result)
     }
 
-    pub async fn get_guilds(&self, current_user_id: usize) -> Result<Vec<GuildDocument>> {
+    pub async fn get_guilds(
+        &self,
+        current_user_id: usize,
+    ) -> Result<Vec<GuildDocument>> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<GuildDocument> = database.collection(&self.collection_name);
+        let collection: Collection<GuildDocument> =
+            database.collection(&self.collection_name);
 
         let find_options = FindOptions::builder()
             .sort(doc! {
@@ -96,7 +107,8 @@ impl GuildsRepository {
     ) -> Result<Option<GuildDocument>> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<GuildDocument> = database.collection(&self.collection_name);
+        let collection: Collection<GuildDocument> =
+            database.collection(&self.collection_name);
 
         let query = match user_id {
             Some(user_id) => doc! {
@@ -121,10 +133,15 @@ impl GuildsRepository {
         Ok(document)
     }
 
-    pub async fn delete_guild(&self, id: ObjectId, user_id: Option<usize>) -> Result<DeleteResult> {
+    pub async fn delete_guild(
+        &self,
+        id: ObjectId,
+        user_id: Option<usize>,
+    ) -> Result<DeleteResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<GuildDocument> = database.collection(&self.collection_name);
+        let collection: Collection<GuildDocument> =
+            database.collection(&self.collection_name);
 
         let query = match user_id {
             Some(user_id) => doc! {
@@ -157,7 +174,8 @@ impl GuildsRepository {
     ) -> Result<UpdateResult> {
         let database = self.database.get_database_client()?;
 
-        let collection: Collection<GuildDocument> = database.collection(&self.collection_name);
+        let collection: Collection<GuildDocument> =
+            database.collection(&self.collection_name);
 
         let query = doc! {
 

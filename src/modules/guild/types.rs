@@ -40,7 +40,11 @@ impl TryFrom<Guild> for GuildDocument {
         Ok(GuildDocument {
             _id: ObjectId::from_str(&guild.id)?,
             name: guild.name,
-            member_ids: guild.members.into_iter().map(|member| member.id).collect(),
+            member_ids: guild
+                .members
+                .into_iter()
+                .map(|member| member.id)
+                .collect(),
             created_by_user_id: guild.created_by_user.id,
             updated_at: bson::DateTime::from_chrono(guild.updated_at),
             created_at: bson::DateTime::from_chrono(guild.created_at),

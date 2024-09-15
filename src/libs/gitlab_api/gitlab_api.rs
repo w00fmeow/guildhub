@@ -2,8 +2,8 @@ use anyhow::Result;
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
 use oauth2::{
-    AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, RedirectUrl, TokenResponse,
-    TokenUrl,
+    AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret,
+    RedirectUrl, TokenResponse, TokenUrl,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -33,14 +33,11 @@ impl GitlabApi {
                     .expect("To be able to create token url"),
             ),
         )
-        .set_redirect_uri(RedirectUrl::new(redirect_url).expect("Invalid redirect URL"));
+        .set_redirect_uri(
+            RedirectUrl::new(redirect_url).expect("Invalid redirect URL"),
+        );
 
-        Self {
-            domain,
-            private_token,
-            http_client: Client::new(),
-            oath,
-        }
+        Self { domain, private_token, http_client: Client::new(), oath }
     }
 
     fn get_base_api_url(&self) -> String {
@@ -70,7 +67,10 @@ impl GitlabApi {
         Ok(members)
     }
 
-    pub async fn get_all_group_members(&self, group_id: &str) -> Result<Vec<Member>> {
+    pub async fn get_all_group_members(
+        &self,
+        group_id: &str,
+    ) -> Result<Vec<Member>> {
         let mut members = Vec::new();
 
         let page_size = 100;
@@ -96,25 +96,26 @@ impl GitlabApi {
         Ok(members)
     }
 
-    pub async fn get_user_by_access_token(&self, access_token: &AccessToken) -> Result<Member> {
+    pub async fn get_user_by_access_token(
+        &self,
+        access_token: &AccessToken,
+    ) -> Result<Member> {
         let url = format!(
             "{}/user?access_token={}",
             self.get_base_api_url(),
             access_token.secret()
         );
 
-        let member = self
-            .http_client
-            .get(url)
-            .send()
-            .await?
-            .json::<Member>()
-            .await?;
+        let member =
+            self.http_client.get(url).send().await?.json::<Member>().await?;
 
         Ok(member)
     }
 
-    pub async fn authorize_user_by_access_code(&self, code: AuthorizationCode) -> Result<Member> {
+    pub async fn authorize_user_by_access_code(
+        &self,
+        code: AuthorizationCode,
+    ) -> Result<Member> {
         let token = self
             .oath
             .exchange_code(code)

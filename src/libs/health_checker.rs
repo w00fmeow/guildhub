@@ -33,8 +33,12 @@ pub trait HealthChecker {
             let current_health_status = self.get_health();
 
             match (current_health_status, new_is_healthy) {
-                (true, false) => warn!("{} is unhealthy", self.get_service_name()),
-                (false, true) => info!("{} is healthy", self.get_service_name()),
+                (true, false) => {
+                    warn!("{} is unhealthy", self.get_service_name())
+                }
+                (false, true) => {
+                    info!("{} is healthy", self.get_service_name())
+                }
                 _ => {}
             }
 
@@ -45,10 +49,7 @@ pub trait HealthChecker {
     }
 
     fn to_dependency(&self) -> Dependency {
-        Dependency {
-            name: self.get_service_name(),
-            up: self.get_health(),
-        }
+        Dependency { name: self.get_service_name(), up: self.get_health() }
     }
 }
 

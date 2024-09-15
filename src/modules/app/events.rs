@@ -13,10 +13,7 @@ pub enum ToastLevel {
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HxTriggerEvent {
-    ShowToast {
-        level: ToastLevel,
-        message: String,
-    },
+    ShowToast { level: ToastLevel, message: String },
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

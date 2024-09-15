@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use validator::ValidationErrors;
 
-pub fn validator_errors_to_hashmap(errors: Option<ValidationErrors>) -> HashMap<String, String> {
+pub fn validator_errors_to_hashmap(
+    errors: Option<ValidationErrors>,
+) -> HashMap<String, String> {
     let mut error_map = HashMap::new();
 
     if errors.is_none() {

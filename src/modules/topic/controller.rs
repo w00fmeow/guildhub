@@ -1,7 +1,10 @@
 use crate::{
     libs::{htmx::Location, validator::validator_errors_to_hashmap},
     modules::{
-        app::{app::App, user_extractor::Authenticated, AppError, HxTriggerEvent, ToastLevel},
+        app::{
+            app::App, user_extractor::Authenticated, AppError, HxTriggerEvent,
+            ToastLevel,
+        },
         guild::GuildIdParameter,
     },
 };
@@ -19,8 +22,8 @@ use validator::Validate;
 
 use super::constants::TOPICS_LIMIT;
 use super::types::{
-    CreateTopicTemplate, EditTopicTemplate, PaginationParameters, TopicDraft, TopicFormDTO,
-    TopicsListItemTemplate, TopicsListTemplate, VoteTopicResult,
+    CreateTopicTemplate, EditTopicTemplate, PaginationParameters, TopicDraft,
+    TopicFormDTO, TopicsListItemTemplate, TopicsListTemplate, VoteTopicResult,
 };
 
 #[derive(Deserialize)]
@@ -32,7 +35,9 @@ pub async fn get_topics_list(
     Authenticated(user): Authenticated,
     State(app): State<Arc<App>>,
     Path(parameters): Path<GuildIdParameter>,
-    Query(PaginationQueryParameters { page }): Query<PaginationQueryParameters>,
+    Query(PaginationQueryParameters { page }): Query<
+        PaginationQueryParameters,
+    >,
 ) -> Result<impl IntoResponse, AppError> {
     let topics = app
         .topics_service
@@ -190,10 +195,7 @@ pub async fn upvote_topic(
     State(app): State<Arc<App>>,
     Authenticated(user): Authenticated,
 ) -> Result<impl IntoResponse, AppError> {
-    let VoteTopicResult {
-        topic,
-        previously_voted: _,
-    } = app
+    let VoteTopicResult { topic, previously_voted: _ } = app
         .topics_service
         .upvote_topic(parameters.guild_id, parameters.topic_id, user.id)
         .await?;
@@ -208,7 +210,11 @@ pub async fn remove_vote_from_topic(
 ) -> Result<impl IntoResponse, AppError> {
     let topic = app
         .topics_service
-        .remove_vote_from_topic(&parameters.guild_id, &parameters.topic_id, user.id)
+        .remove_vote_from_topic(
+            &parameters.guild_id,
+            &parameters.topic_id,
+            user.id,
+        )
         .await?;
 
     Ok(TopicsListItemTemplate { topic })
@@ -251,7 +257,8 @@ pub async fn get_edit_topic_form(
             id: Some(topic.id),
             guild_id: topic.guild_id,
             text: topic.text,
-            will_be_presented_by_the_creator: topic.will_be_presented_by_the_creator,
+            will_be_presented_by_the_creator: topic
+                .will_be_presented_by_the_creator,
         },
         is_valid: false,
         errors: HashMap::new(),
@@ -324,9 +331,7 @@ pub async fn delete_topic(
     State(app): State<Arc<App>>,
     Authenticated(user): Authenticated,
 ) -> Result<impl IntoResponse, AppError> {
-    app.topics_service
-        .delete_topic(&parameters.topic_id, user.id)
-        .await?;
+    app.topics_service.delete_topic(&parameters.topic_id, user.id).await?;
 
     let event = HxTriggerEvent::ShowToast {
         level: ToastLevel::Info,

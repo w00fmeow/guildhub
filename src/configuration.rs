@@ -27,7 +27,8 @@ impl MongoConfiguration {
     pub async fn parse_connection_string(
         connection_string: &str,
     ) -> Result<ClientOptions, mongodb::error::Error> {
-        let mut client_options = ClientOptions::parse(connection_string).await?;
+        let mut client_options =
+            ClientOptions::parse(connection_string).await?;
 
         client_options.connect_timeout = Some(StdDuration::from_secs(5));
 
@@ -52,7 +53,8 @@ pub struct GitlabConfiguration {
 impl GitlabConfiguration {
     pub fn new() -> Self {
         Self {
-            domain: env::var("GITLAB_DOMAIN").expect("GITLAB_DOMAIN variable to be available"),
+            domain: env::var("GITLAB_DOMAIN")
+                .expect("GITLAB_DOMAIN variable to be available"),
 
             access_token: env::var("GITLAB_ACCESS_TOKEN")
                 .expect("GITLAB_ACCESS_TOKEN variable to be available"),
@@ -83,12 +85,17 @@ impl AuthConfiguration {
         Self {
             expire_in_hours: Duration::hours(
                 env::var("AUTH_TOKEN_VALID_FOR_HOURS")
-                    .expect("AUTH_TOKEN_VALID_FOR_HOURS variable to be available")
+                    .expect(
+                        "AUTH_TOKEN_VALID_FOR_HOURS variable to be available",
+                    )
                     .parse()
-                    .expect("AUTH_TOKEN_VALID_FOR_HOURS variable to an integer"),
+                    .expect(
+                        "AUTH_TOKEN_VALID_FOR_HOURS variable to an integer",
+                    ),
             ),
 
-            secret: env::var("AUTH_SECRET").expect("AUTH_SECRET variable to be available"),
+            secret: env::var("AUTH_SECRET")
+                .expect("AUTH_SECRET variable to be available"),
         }
     }
 }
@@ -108,14 +115,16 @@ impl Configuration {
 
         let environment = parse_env();
 
-        let mongo_db_uri =
-            env::var("MONGO_DB_URI").unwrap_or_else(|_| String::from("mongodb://localhost:27017"));
+        let mongo_db_uri = env::var("MONGO_DB_URI")
+            .unwrap_or_else(|_| String::from("mongodb://localhost:27017"));
 
         Configuration {
             mongo: Arc::new(MongoConfiguration {
-                client_options: MongoConfiguration::parse_connection_string(&mongo_db_uri)
-                    .await
-                    .expect("Valid mongo_db_uri"),
+                client_options: MongoConfiguration::parse_connection_string(
+                    &mongo_db_uri,
+                )
+                .await
+                .expect("Valid mongo_db_uri"),
             }),
             app_port: env::var("APP_PORT")
                 .unwrap()
@@ -129,7 +138,8 @@ impl Configuration {
 }
 
 fn parse_env() -> Environment {
-    let env_var = env::var("ENV").unwrap_or_else(|_| "development".to_string());
+    let env_var =
+        env::var("ENV").unwrap_or_else(|_| "development".to_string());
 
     match env_var.trim().to_lowercase().as_str() {
         "production" => Environment::Production,

@@ -5,12 +5,15 @@ use bson::oid::ObjectId;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tracing::error;
 
-use crate::{libs::gitlab_api::gitlab_api::Member, modules::gitlab::GitlabService};
+use crate::{
+    libs::gitlab_api::gitlab_api::Member, modules::gitlab::GitlabService,
+};
 
 use super::{
     repository::TopicsRepository,
     types::{
-        PaginationParameters, Topic, TopicEvent, TopicFormDTO, TopicPersonalized, VoteTopicResult,
+        PaginationParameters, Topic, TopicEvent, TopicFormDTO,
+        TopicPersonalized, VoteTopicResult,
     },
     TopicDocument,
 };
@@ -22,7 +25,10 @@ pub struct TopicsService {
 }
 
 impl TopicsService {
-    pub fn new(gitlab_service: Arc<GitlabService>, repository: Arc<TopicsRepository>) -> Self {
+    pub fn new(
+        gitlab_service: Arc<GitlabService>,
+        repository: Arc<TopicsRepository>,
+    ) -> Self {
         Self {
             events_channel: channel::<TopicEvent>(50),
             gitlab_service,
@@ -34,10 +40,8 @@ impl TopicsService {
         &self,
         guild_ids: Vec<ObjectId>,
     ) -> Result<HashMap<String, usize>> {
-        let aggregation_results = self
-            .repository
-            .get_topics_count_by_guild_ids(guild_ids)
-            .await?;
+        let aggregation_results =
+            self.repository.get_topics_count_by_guild_ids(guild_ids).await?;
 
         let mut result_map = HashMap::new();
 
@@ -59,10 +63,8 @@ impl TopicsService {
     ) -> Result<Vec<TopicPersonalized>> {
         let guild_id = ObjectId::from_str(guild_id)?;
 
-        let documents = self
-            .repository
-            .get_guild_topics(&guild_id, pagination)
-            .await?;
+        let documents =
+            self.repository.get_guild_topics(&guild_id, pagination).await?;
 
         let mut result = Vec::with_capacity(documents.len());
 
@@ -99,8 +101,10 @@ impl TopicsService {
                 ))
             };
 
-            let is_upvoted_by_current_user = document.upvoted_by_users_ids.contains(&user_id);
-            let is_created_by_current_user = document.created_by_user_id == user_id;
+            let is_upvoted_by_current_user =
+                document.upvoted_by_users_ids.contains(&user_id);
+            let is_created_by_current_user =
+                document.created_by_user_id == user_id;
 
             let created_by_user = created_by_user.unwrap().clone();
 
@@ -108,7 +112,9 @@ impl TopicsService {
                 .upvoted_by_users_ids
                 .iter()
                 .map(|user_id| {
-                    let user = all_members.iter().find(|member| &member.id == user_id);
+                    let user = all_members
+                        .iter()
+                        .find(|member| &member.id == user_id);
 
                     if user.is_none() {
                         bail!(format!(
@@ -125,7 +131,8 @@ impl TopicsService {
                 id: document._id.to_hex(),
                 guild_id: document.guild_id.to_hex(),
                 text: document.text,
-                will_be_presented_by_the_creator: document.will_be_presented_by_the_creator,
+                will_be_presented_by_the_creator: document
+                    .will_be_presented_by_the_creator,
                 created_by_user,
                 is_created_by_current_user,
                 is_upvoted_by_current_user,
@@ -160,49 +167,55 @@ impl TopicsService {
             created_at: bson::DateTime::now(),
         };
 
-        let insert_result = self
-            .repository
-            .insert_topic_document(document_to_insert)
-            .await?;
+        let insert_result =
+            self.repository.insert_topic_document(document_to_insert).await?;
 
-        let created_id = insert_result.inserted_id.as_object_id().ok_or_else(|| {
-            anyhow::anyhow!("Failed to convert object id of created topic document")
-        })?;
+        let created_id =
+            insert_result.inserted_id.as_object_id().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Failed to convert object id of created topic document"
+                )
+            })?;
 
-        let created_topic = match self.get_topic(&created_id.to_hex(), user_id).await? {
-            Some(topic) => topic,
-            None => {
-                error!(
-                    "Failed to find created document by id {}",
-                    insert_result.inserted_id
-                );
+        let created_topic =
+            match self.get_topic(&created_id.to_hex(), user_id).await? {
+                Some(topic) => topic,
+                None => {
+                    error!(
+                        "Failed to find created document by id {}",
+                        insert_result.inserted_id
+                    );
 
-                bail!("Topic document was not found");
-            }
-        };
+                    bail!("Topic document was not found");
+                }
+            };
 
         let _ = self
             .events_channel
             .0
             .send(TopicEvent::Create(created_topic.clone().into()));
 
-        let topic_ids = self.repository.get_topic_ids_sorted(&guild_id).await?;
+        let topic_ids =
+            self.repository.get_topic_ids_sorted(&guild_id).await?;
 
-        let _ = self
-            .events_channel
-            .0
-            .send(TopicEvent::OrderChange(topic_ids));
+        let _ = self.events_channel.0.send(TopicEvent::OrderChange(topic_ids));
 
         Ok(created_topic)
     }
 
-    pub async fn get_topic(&self, id: &str, user_id: usize) -> Result<Option<TopicPersonalized>> {
-        let document = match self.repository.get_topic(ObjectId::from_str(id)?).await? {
-            Some(document) => document,
-            None => return Ok(None),
-        };
+    pub async fn get_topic(
+        &self,
+        id: &str,
+        user_id: usize,
+    ) -> Result<Option<TopicPersonalized>> {
+        let document =
+            match self.repository.get_topic(ObjectId::from_str(id)?).await? {
+                Some(document) => document,
+                None => return Ok(None),
+            };
 
-        let mapped_topic = self.map_topic_with_user(document.into(), user_id).await?;
+        let mapped_topic =
+            self.map_topic_with_user(document.into(), user_id).await?;
 
         Ok(Some(mapped_topic))
     }
@@ -239,7 +252,8 @@ impl TopicsService {
             ))
         };
 
-        let is_upvoted_by_current_user = topic.upvoted_by_users_ids.contains(&user_id);
+        let is_upvoted_by_current_user =
+            topic.upvoted_by_users_ids.contains(&user_id);
         let is_created_by_current_user = topic.created_by_user_id == user_id;
 
         let created_by_user = created_by_user.unwrap().clone();
@@ -248,7 +262,8 @@ impl TopicsService {
             .upvoted_by_users_ids
             .iter()
             .map(|user_id| {
-                let user = all_members.iter().find(|member| &member.id == user_id);
+                let user =
+                    all_members.iter().find(|member| &member.id == user_id);
 
                 if user.is_none() {
                     bail!(format!(
@@ -265,7 +280,8 @@ impl TopicsService {
             id: topic.id,
             guild_id: topic.guild_id,
             text: topic.text,
-            will_be_presented_by_the_creator: topic.will_be_presented_by_the_creator,
+            will_be_presented_by_the_creator: topic
+                .will_be_presented_by_the_creator,
             created_by_user,
             is_created_by_current_user,
             is_upvoted_by_current_user,
@@ -313,7 +329,8 @@ impl TopicsService {
 
         let topic = self.get_topic(&id, user_id).await?;
 
-        let topic_ids = self.repository.get_topic_ids_sorted(&guild_id).await?;
+        let topic_ids =
+            self.repository.get_topic_ids_sorted(&guild_id).await?;
 
         match topic {
             Some(topic) => {
@@ -327,10 +344,7 @@ impl TopicsService {
                     .0
                     .send(TopicEvent::OrderChange(topic_ids));
 
-                Ok(VoteTopicResult {
-                    previously_voted,
-                    topic,
-                })
+                Ok(VoteTopicResult { previously_voted, topic })
             }
             None => bail!("Failed to fetch topic"),
         }
@@ -350,7 +364,8 @@ impl TopicsService {
 
         let topic = self.get_topic(&id, user_id).await?;
 
-        let topic_ids = self.repository.get_topic_ids_sorted(&guild_id).await?;
+        let topic_ids =
+            self.repository.get_topic_ids_sorted(&guild_id).await?;
 
         match topic {
             Some(topic) => {
@@ -406,18 +421,21 @@ impl TopicsService {
 
         let topic_ids = self
             .repository
-            .get_topic_ids_sorted(&ObjectId::from_str(&updated_topic.guild_id)?)
+            .get_topic_ids_sorted(&ObjectId::from_str(
+                &updated_topic.guild_id,
+            )?)
             .await?;
 
-        let _ = self
-            .events_channel
-            .0
-            .send(TopicEvent::OrderChange(topic_ids));
+        let _ = self.events_channel.0.send(TopicEvent::OrderChange(topic_ids));
 
         Ok(updated_topic)
     }
 
-    pub async fn delete_topic(&self, id: &str, user_id: usize) -> Result<Topic> {
+    pub async fn delete_topic(
+        &self,
+        id: &str,
+        user_id: usize,
+    ) -> Result<Topic> {
         let topic = match self.get_topic(id, user_id).await? {
             Some(topic) => topic,
             None => bail!("Failed to find this topic"),

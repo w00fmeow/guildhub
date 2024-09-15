@@ -18,7 +18,10 @@ where
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _: &S,
+    ) -> Result<Self, Self::Rejection> {
         match parts.extract::<MaybeAuthenticated>().await {
             Ok(MaybeAuthenticated(Some(member))) => Ok(Authenticated(member)),
 
@@ -48,7 +51,10 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _: &S,
+    ) -> Result<Self, Self::Rejection> {
         let member = parts.extensions.get::<Member>().cloned();
 
         Ok(MaybeAuthenticated(member))
