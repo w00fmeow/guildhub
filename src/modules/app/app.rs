@@ -12,7 +12,6 @@ use crate::modules::topic::{self, TopicsRepository, TopicsService};
 use axum::middleware;
 use axum::routing::{delete, get, post, put};
 use axum::Router;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::{self, Receiver, Sender};
@@ -179,9 +178,6 @@ impl App {
     }
 
     pub fn get_app_router(app: Arc<App>) -> Router {
-        let assets_dir =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("static");
-
         let guild_router = Router::new()
             .route("/", get(guild::get_guilds_page))
             .route("/", post(guild::create_guild))
@@ -245,7 +241,7 @@ impl App {
         Router::new()
             .merge(public_router)
             .nest("/guilds", guild_router)
-            .nest_service("/static", ServeDir::new(assets_dir))
+            .nest_service("/static", ServeDir::new("static"))
             .route_layer(middleware::from_fn_with_state(
                 app.clone(),
                 optional_auth,

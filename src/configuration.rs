@@ -127,7 +127,7 @@ impl Configuration {
                 .expect("Valid mongo_db_uri"),
             }),
             app_port: env::var("APP_PORT")
-                .unwrap()
+                .unwrap_or_else(|_| "80".to_string())
                 .parse()
                 .expect("APP_PORT variable to an integer"),
             environment,
