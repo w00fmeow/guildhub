@@ -1,29 +1,27 @@
 {% let is_first_page = current_page == 1 %}
 {% if is_first_page %}
-<li id="empty-state" class="not-sortable {% if !topics.is_empty() %} hidden {% endif %}">
-    <h3>
-        No topics created yet
-    </h3>
-</li>
+<ul id="guild-topics" sse-swap="topic-created" hx-swap="afterbegin">
+    <li id="empty-state" class="not-sortable {% if !topics.is_empty() %} hidden {% endif %}">
+        <h3>
+            No topics created yet
+        </h3>
+    </li>
+    {% endif %}
+
+    {% for topic in topics %}
+
+    {% include "topic-list-item.html" %}
+
+    {% if loop.last && has_more_topics %}
+    {% let next_page = current_page + 1 %}
+    <li id="next-page-topic-loader" class="not-sortable" hx-get="/guilds/{{ guild_id }}/topics?page={{ next_page }}"
+        hx-trigger="intersect once" hx-swap="outerHTML">
+        <span class="spinner htmx-indicator"></span>
+    </li>
+    {% endif %}
+
+    {% endfor %}
+
+    {% if is_first_page %}
+</ul>
 {% endif %}
-
-
-{% if is_first_page %}
-<li sse-swap="topic-created" hx-swap="afterend" class="not-sortable">
-</li>
-{% endif %}
-
-
-{% for topic in topics %}
-
-{% include "topic-list-item.html" %}
-
-{% if loop.last && has_more_topics %}
-{% let next_page = current_page + 1 %}
-<li class="not-sortable" hx-get="/guilds/{{ guild_id }}/topics?page={{ next_page }}" hx-trigger="intersect once"
-    hx-swap="outerHTML">
-    <span class="spinner htmx-indicator"></span>
-</li>
-{% endif %}
-
-{% endfor %}

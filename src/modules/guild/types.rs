@@ -110,15 +110,12 @@ impl EditGuildFormTemplate {
 #[template(path = "pages/guild/guilds.html")]
 pub struct GuildsListTemplate {
     pub user: Member,
-    // TODO array of lists for current user
 }
 
 #[derive(Template)]
 #[template(path = "pages/guild/guild.html")]
 pub struct GuildTemplate {
     pub user: Member,
-    pub guild: Option<Guild>,
-    pub can_edit: bool,
     pub guild_id: String,
 }
 
@@ -127,7 +124,7 @@ pub struct GuildTemplate {
 pub struct GuildOverviewTemplate {
     pub guild_id: String,
     pub user: Member,
-    pub guild: Option<Guild>,
+    pub guild: Guild,
     pub can_edit: bool,
 }
 

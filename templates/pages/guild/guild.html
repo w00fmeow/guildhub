@@ -94,8 +94,34 @@
 </script>
 <div id="guild-container" hx-ext="sse" sse-connect="/guilds/{{ guild_id }}/events"
     hx-on::sse-before-message="onSseMessage()">
-    {% include "components/guild/guild-overview.html" %}
+    <div id="guild-header" hx-get="/guilds/{{ guild_id }}/overview" hx-trigger="load" hx-swap="outerHTML">
+        <style>
+            #guild-title-skeleton {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                width: 100%;
+                flex-direction: column;
 
+                gap: 16px;
+            }
+
+            #guild-title-skeleton>.skeleton--title {
+                height: 24px;
+                width: 200px;
+            }
+
+            #guild-title-skeleton>.skeleton--sub-title {
+                height: 16px;
+                width: 400px;
+            }
+        </style>
+
+        <div id="guild-title-skeleton" class="htmx-indicator">
+            <div class="skeleton skeleton--title"></div>
+            <div class="skeleton skeleton--sub-title"></div>
+        </div>
+    </div>
 
     <div id="guild-topics-header">
         <h3 id="guild-topics-header-title">
@@ -221,7 +247,7 @@
             display: none;
         }
     </style>
-    <ul id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics?page=1" hx-trigger="load">
+    <ul id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics?page=1" hx-trigger="load" hx-swap="outerHTML">
         <div class="skeleton htmx-indicator"></div>
         <div class="skeleton htmx-indicator"></div>
         <div class="skeleton htmx-indicator"></div>

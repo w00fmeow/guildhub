@@ -268,12 +268,7 @@ pub async fn get_guild(
     Authenticated(user): Authenticated,
     Path(parameters): Path<GuildIdParameter>,
 ) -> impl IntoResponse {
-    GuildTemplate {
-        user,
-        guild: None,
-        guild_id: parameters.guild_id.to_owned(),
-        can_edit: false,
-    }
+    GuildTemplate { user, guild_id: parameters.guild_id.to_owned() }
 }
 
 pub async fn get_guild_overview(
@@ -323,7 +318,7 @@ pub async fn get_guild_overview(
         can_edit: user.id == guild.created_by_user.id,
         user,
         guild_id: parameters.guild_id,
-        guild: Some(guild),
+        guild,
     }
     .into_response())
 }

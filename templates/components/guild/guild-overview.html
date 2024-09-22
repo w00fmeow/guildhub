@@ -1,5 +1,4 @@
-<div id="guild-header" hx-get="/guilds/{{ guild_id }}/overview" {% if guild.is_some() %} hx-trigger="sse:guild-updated"
-    {% else %} hx-trigger="load" {% endif %} hx-swap="outerHTML">
+<div id="guild-header" hx-get="/guilds/{{ guild_id }}/overview" hx-trigger="sse:guild-updated" hx-swap="outerHTML">
     <style>
         #guild-title-container {
             overflow: hidden;
@@ -44,36 +43,7 @@
             align-items: center;
             gap: 10px;
         }
-
-
-        #guild-title-skeleton {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            width: 100%;
-            flex-direction: column;
-
-            gap: 16px;
-        }
-
-        #guild-title-skeleton>.skeleton--title {
-            height: 24px;
-            width: 200px;
-        }
-
-        #guild-title-skeleton>.skeleton--sub-title {
-            height: 16px;
-            width: 400px;
-        }
     </style>
-    {% if guild.is_none() %}
-    <div id="guild-title-skeleton" class="htmx-indicator">
-        <div class="skeleton skeleton--title"></div>
-        <div class="skeleton skeleton--sub-title"></div>
-    </div>
-    {% endif %}
-
-    {% if let Some(guild) = guild %}
     <div id="guild-title-container">
         <h2 id="guild-name">
             {{ guild.name|trim }}
@@ -98,6 +68,5 @@
         <div hx-delete="/guilds/{{ guild.id }}" id="delete-guild-button" class="action-icon">
         </div>
     </div>
-    {% endif %}
     {% endif %}
 </div>
