@@ -22,6 +22,7 @@
     #guild-topics-header {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         width: 100%;
         margin: 20px 0 10px 0;
     }
@@ -48,24 +49,42 @@
     function onSseMessage() {
         const guildContainer = document.getElementById("guild-container");
 
-        if (event?.detail?.type === "topic-created") {
-
-            const emptyStateElement = guildContainer.querySelector('#empty-state');
-
-            htmx.addClass(emptyStateElement, "hidden");
-
-        } else if (event?.detail?.type?.startsWith("topic-deleted")) {
+        function showEmptyStateIfLastCardRemoved() {
             const existingCardsCount = guildContainer.querySelectorAll('.topic-card').length;
 
             if (existingCardsCount === 1) {
                 const emptyStateElement = guildContainer.querySelector('#empty-state');
                 htmx.removeClass(emptyStateElement, "hidden");
             }
+        }
 
+        if (["topic-created", "topic-archived"].includes(event?.detail?.type)) {
+
+            const emptyStateElement = guildContainer.querySelector('#empty-state');
+
+            htmx.addClass(emptyStateElement, "hidden");
+
+        } else if (event?.detail?.type?.startsWith("topic-deleted")) {
+
+            showEmptyStateIfLastCardRemoved();
 
             const deleteBtn = event.detail.elt.querySelector("#delete-topic-button");
+            if (!deleteBtn) {
+                return
+            }
 
             if ([...deleteBtn.classList].includes("htmx-request")) {
+                event.preventDefault()
+            }
+        } else if (event?.detail?.type?.startsWith("topic-status-changed")) {
+            showEmptyStateIfLastCardRemoved();
+
+            const archiveBtn = event.detail.elt.querySelector("#archive-topic-button");
+            if (!archiveBtn) {
+                return
+            }
+
+            if ([...archiveBtn.classList].includes("htmx-request")) {
                 event.preventDefault()
             }
         } else if (event?.detail?.type === "topics-order-changed") {
@@ -123,13 +142,43 @@
         </div>
     </div>
 
+
     <div id="guild-topics-header">
-        <h3 id="guild-topics-header-title">
-            Topics
-        </h3>
-        <div hx-get="/guilds/{{ guild_id }}/topics/add" id="add-new-topic-button" class="action-icon" hx-push-url="true"
-            hx-target="#content" hx-select="#content" hx-swap="outerHTML">
-            +
+        <style>
+            #title-with-filter {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            #archived-filter {
+                font-weight: 200;
+            }
+        </style>
+
+        <div id="title-with-filter">
+            <h3 id="guild-topics-header-title">
+                Topics
+            </h3>
+
+            <div id="archived-filter" class="checkbox" hx-get="/guilds/{{ guild_id }}" hx-push-url="true"
+                hx-swap="outerHTML" hx-select="#guild-topics" hx-target="#guild-topics" hx-include="#archived"
+                hx-trigger="change">
+
+                <label class="control control--checkbox">
+                    Archived only
+                    <input name="archived" id="archived" type="checkbox" value=true>
+
+                    <div class="control__indicator"></div>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <div hx-get="/guilds/{{ guild_id }}/topics/add" id="add-new-topic-button" class="action-icon"
+                hx-push-url="true" hx-target="#content" hx-select="#content" hx-swap="outerHTML">
+                +
+            </div>
         </div>
     </div>
 
@@ -164,12 +213,21 @@
         #action-buttons {
             display: flex;
             gap: 5px;
+            flex-wrap: unset;
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
         }
 
         .topic-card:hover #action-buttons {
             opacity: 1;
+        }
+
+        .topic-card.archived {
+            border: 1px solid var(--color-disabled) !important;
+        }
+
+        .topic-card.archived #upvote-icon {
+            cursor: initial;
         }
 
         #edit-topic-button {
@@ -183,6 +241,13 @@
             background-color: var(--color-red);
             -webkit-mask: url("/static/images/trash-can.svg") no-repeat center;
             mask: url("/static/images/trash-can.svg") no-repeat center;
+            mask-size: 100%;
+        }
+
+        #archive-topic-button {
+            background-color: var(--color-white);
+            -webkit-mask: url("/static/images/archive.svg") no-repeat center;
+            mask: url("/static/images/archive.svg") no-repeat center;
             mask-size: 100%;
         }
 
@@ -223,6 +288,10 @@
             color: var(--color-green);
         }
 
+        .topic-card.archived #upvotes-container.is-upvoted-by-me {
+            color: var(--color-disabled);
+        }
+
         #upvotes-count {
             line-height: 1em;
             font-weight: 400;
@@ -246,8 +315,27 @@
         #empty-state.hidden {
             display: none;
         }
+
+        #archive-icon {
+            transform: rotate(180deg);
+            transition: transform 0.5s;
+        }
+
+        #archive-icon-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--color-disabled);
+            cursor: pointer;
+        }
+
+        #archive-icon-container:hover>* {
+            opacity: 1;
+            color: var(--color-white);
+        }
     </style>
-    <ul id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics?page=1" hx-trigger="load" hx-swap="outerHTML">
+    <ul id="guild-topics" hx-get="/guilds/{{ guild_id }}/topics?page=1&status={{ status }}" hx-trigger="load"
+        hx-swap="outerHTML">
         <div class="skeleton htmx-indicator"></div>
         <div class="skeleton htmx-indicator"></div>
         <div class="skeleton htmx-indicator"></div>

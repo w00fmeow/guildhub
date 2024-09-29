@@ -4,11 +4,14 @@ use crate::configuration::{Configuration, Environment};
 use crate::libs::gitlab_api::gitlab_api::Member;
 use crate::libs::gitlab_api::GitlabApi;
 use crate::libs::health_checker::HealthChecker;
+use crate::libs::migration::Migration;
 use crate::libs::mongo::database::MongoDatabase;
 use crate::modules::auth::AuthService;
 use crate::modules::gitlab::GitlabService;
 use crate::modules::guild::{self, GuildsRepository, GuildsService};
+use crate::modules::topic::migrations::add_topic_status::AddTopicStatusMigration;
 use crate::modules::topic::{self, TopicsRepository, TopicsService};
+use anyhow::Result;
 use axum::middleware;
 use axum::routing::{delete, get, post, put};
 use axum::Router;
@@ -30,6 +33,7 @@ pub struct App {
     pub topics_service: Arc<TopicsService>,
     pub auth_service: Arc<AuthService>,
     pub dependencies: Arc<Vec<Box<Arc<dyn HealthChecker + Send + Sync>>>>,
+    pub migrations: Arc<Vec<Box<Arc<dyn Migration + Send + Sync>>>>,
 }
 
 impl App {
@@ -163,7 +167,11 @@ impl App {
             }
         });
 
+        let migrations: Arc<Vec<Box<Arc<dyn Migration + Send + Sync>>>> =
+            Arc::new(vec![Box::new(Arc::new(AddTopicStatusMigration {}))]);
+
         App {
+            migrations,
             events_channel,
             configuration,
             database,
@@ -175,6 +183,25 @@ impl App {
             topics_repository,
             topics_service,
         }
+    }
+
+    pub async fn run_migrations(&self) -> Result<()> {
+        for migration in self.migrations.iter() {
+            let migration_name = migration.name();
+
+            info!("Running migration: {migration_name}");
+
+            match migration.run(self.database.clone()).await {
+                Ok(()) => {
+                    info!("Finished migration: {migration_name}");
+                }
+                Err(err) => {
+                    error!("Failed to run migration: {migration_name}. {err}")
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn get_app_router(app: Arc<App>) -> Router {
@@ -220,6 +247,14 @@ impl App {
             .route(
                 "/:guild_id/topics/:topic_id/vote",
                 post(topic::upvote_topic),
+            )
+            .route(
+                "/:guild_id/topics/:topic_id/archive",
+                post(topic::archive_topic),
+            )
+            .route(
+                "/:guild_id/topics/:topic_id/unarchive",
+                post(topic::unarchive_topic),
             )
             .route("/:guild_id/topics/:topic_id", delete(topic::delete_topic))
             .route(

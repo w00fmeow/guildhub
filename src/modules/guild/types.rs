@@ -1,5 +1,6 @@
 use crate::libs::serialization;
 use crate::modules::app::Event;
+use crate::modules::topic::types::TopicStatus;
 use askama_axum::Template;
 use bson::oid::ObjectId;
 use chrono::{DateTime, Utc};
@@ -117,6 +118,7 @@ pub struct GuildsListTemplate {
 pub struct GuildTemplate {
     pub user: Member,
     pub guild_id: String,
+    pub status: TopicStatus,
 }
 
 #[derive(Template)]
@@ -137,6 +139,11 @@ pub struct GuildListItemsTemplate {
 #[derive(Deserialize)]
 pub struct GuildIdParameter {
     pub guild_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct ArchivedQueryParameter {
+    pub archived: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

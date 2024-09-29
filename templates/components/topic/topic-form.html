@@ -39,18 +39,18 @@
         </span>
     </div>
 
-    <div id="form-field" class="--checkbox">
-        <label for="i-will-present">
+    <div id="form-field" class="checkbox">
+        <label class="control control--checkbox">
             I will present it
+            <input name="i-will-present" id="i-will-present" type="checkbox" {% match topic.id %} {% when Some with
+                (topic_id) %} hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic_id }}/draft" {% when None %}
+                hx-post="/guilds/{{ topic.guild_id }}/topics/draft" {% endmatch %} hx-trigger="click"
+                hx-push-url="false" hx-swap="none" value="true" {% if topic.will_be_presented_by_the_creator %} checked
+                {% endif %}>
+
+            <div class="control__indicator"></div>
         </label>
-
-        <input name="i-will-present" id="i-will-present" type="checkbox" {% match topic.id %} {% when Some with
-            (topic_id) %} hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic_id }}/draft" {% when None %}
-            hx-post="/guilds/{{ topic.guild_id }}/topics/draft" {% endmatch %} hx-trigger="click" hx-push-url="false"
-            hx-swap="none" value="true" {% if topic.will_be_presented_by_the_creator %} checked {% endif %}>
     </div>
-
-
 
     <div id="action-buttons">
         <button hx-get="/guilds/{{ topic.guild_id }}" hx-target="#content" hx-select="#content" hx-swap="outerHTML"

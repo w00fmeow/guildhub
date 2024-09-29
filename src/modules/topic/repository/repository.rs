@@ -1,18 +1,23 @@
 use std::sync::Arc;
 
 use crate::{
-    libs::mongo::MongoDatabase, modules::topic::types::PaginationParameters,
+    libs::{mongo::MongoDatabase, utils::omit_values},
+    modules::topic::types::{PaginationParameters, TopicStatus},
 };
 use anyhow::{Context, Result};
-use bson::{doc, oid::ObjectId, DateTime, Document};
+use bson::{doc, oid::ObjectId, Document};
 use futures::TryStreamExt;
 use mongodb::{
     options::{AggregateOptions, IndexOptions},
     results::{DeleteResult, InsertOneResult, UpdateResult},
     Collection, IndexModel,
 };
+use serde_json::Value;
 
-use super::{TopicDocument, TopicDocumentId, TopicsCountAggregationResult};
+use super::{
+    PartialTopicDocument, TopicDocument, TopicDocumentId,
+    TopicsCountAggregationResult,
+};
 
 pub struct TopicsRepository {
     database: Arc<MongoDatabase>,
@@ -32,16 +37,19 @@ impl TopicsRepository {
     }
 
     pub async fn set_indexes(&self) -> Result<()> {
-        let indexes = vec![("guild_id", doc! {"created_by_user_id":1})]
-            .into_iter()
-            .map(|(index_name, doc)| {
-                let options = IndexOptions::builder()
-                    .name(index_name.to_string())
-                    .build();
+        let indexes = vec![
+            ("guild_id", doc! {"guild_id":1}),
+            ("created_by_user_id", doc! {"created_by_user_id":1}),
+            ("status", doc! {"status":1}),
+        ]
+        .into_iter()
+        .map(|(index_name, doc)| {
+            let options =
+                IndexOptions::builder().name(index_name.to_string()).build();
 
-                IndexModel::builder().keys(doc).options(options).build()
-            })
-            .collect();
+            IndexModel::builder().keys(doc).options(options).build()
+        })
+        .collect();
 
         self.database
             .create_indexes::<TopicDocument>(&self.collection_name, indexes)
@@ -67,34 +75,38 @@ impl TopicsRepository {
 
     pub async fn get_guild_topics(
         &self,
-        guild_id: &ObjectId,
         PaginationParameters { skip, limit }: PaginationParameters,
+        filter_by: PartialTopicDocument,
     ) -> Result<Vec<TopicDocument>> {
         let database = self.database.get_database_client()?;
 
         let collection: Collection<TopicDocument> =
             database.collection(&self.collection_name);
 
-        let mut pipeline = self.get_topics_aggregation_pipeline(guild_id);
+        let mut pipeline = self.get_topics_aggregation_pipeline(filter_by)?;
 
         pipeline.push(doc! {
-        "$skip": skip as u32
+            "$skip": skip as u32
         });
 
         pipeline.push(doc! {
-        "$limit": limit as u32
+            "$limit": limit as u32
         });
 
         let options: AggregateOptions =
             AggregateOptions::builder().allow_disk_use(true).build();
 
-        let mut cursor = collection.aggregate(pipeline, options).await?;
+        let mut cursor = collection
+            .aggregate(pipeline, options)
+            .await
+            .context("Failed to fetch topics by guild id")?;
 
         let mut results = Vec::new();
 
         while let Some(result_doc) = cursor.try_next().await? {
             let shop_aggregation_result: TopicDocument =
-                bson::from_bson(bson::Bson::Document(result_doc))?;
+                bson::from_bson(bson::Bson::Document(result_doc))
+                    .context("Failed to serialize topic documents")?;
 
             results.push(shop_aggregation_result);
         }
@@ -149,8 +161,7 @@ impl TopicsRepository {
     pub async fn update_topic(
         &self,
         id: ObjectId,
-        text: String,
-        will_be_presented_by_the_creator: bool,
+        payload: PartialTopicDocument,
     ) -> Result<UpdateResult> {
         let database = self.database.get_database_client()?;
 
@@ -161,13 +172,10 @@ impl TopicsRepository {
             "_id": id,
         };
 
+        let payload = omit_values(payload, serde_json::Value::Null)?;
+
         let payload = doc! {
-            "$set": doc!{
-                "text": text,
-                "upvoted_by_users_ids": [],
-                "will_be_presented_by_the_creator": will_be_presented_by_the_creator,
-                "updated_at": DateTime::now()
-            }
+            "$set": bson::to_bson(&payload)?
         };
 
         let result = collection.update_one(query, payload, None).await?;
@@ -266,6 +274,7 @@ impl TopicsRepository {
 
         let query = doc! {
             "guild_id": guild_id,
+            "status": TopicStatus::Created.to_string()
         };
 
         let payload = doc! {
@@ -291,6 +300,7 @@ impl TopicsRepository {
 
         let query = doc! {
             "guild_id": guild_id,
+            "status": TopicStatus::Created.to_string(),
             "upvoted_by_users_ids" : user_id as u32
         };
 
@@ -301,13 +311,11 @@ impl TopicsRepository {
 
     fn get_topics_aggregation_pipeline(
         &self,
-        guild_id: &ObjectId,
-    ) -> Vec<Document> {
-        vec![
+        partial_topic: PartialTopicDocument,
+    ) -> Result<Vec<Document>> {
+        Ok(vec![
             doc! {
-            "$match": {
-                "guild_id" : guild_id
-                },
+                "$match": bson::to_bson(&omit_values(partial_topic, Value::Null)?)?,
             },
             doc! {
                 "$addFields": {
@@ -320,7 +328,7 @@ impl TopicsRepository {
                 "updated_at": -1
                 },
             },
-        ]
+        ])
     }
 
     pub async fn get_topic_ids_sorted(
@@ -332,7 +340,15 @@ impl TopicsRepository {
         let collection: Collection<TopicDocument> =
             database.collection(&self.collection_name);
 
-        let mut pipeline = self.get_topics_aggregation_pipeline(guild_id);
+        let mut pipeline =
+            self.get_topics_aggregation_pipeline(PartialTopicDocument {
+                guild_id: Some(*guild_id),
+                text: None,
+                status: Some(TopicStatus::Created),
+                will_be_presented_by_the_creator: None,
+                updated_at: None,
+                upvoted_by_users_ids: None,
+            })?;
 
         pipeline.push(doc! {
                 "$project": {

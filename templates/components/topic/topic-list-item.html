@@ -1,21 +1,39 @@
-<li id="topic-{{ topic.id }}" data-id="{{ topic.id }}" {% if topic.is_upvoted_by_current_user %}
-    class="topic-card is-upvoted-by-me" {% else %} class="topic-card" {% endif %}
-    hx-get="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/card" hx-trigger="sse:topic-updated-{{ topic.id }}"
-    hx-swap="outerHTML" sse-swap="topic-deleted-{{ topic.id }}">
+<li id="topic-{{ topic.id }}" data-id="{{ topic.id }}" class="topic-card {% if topic.is_upvoted_by_current_user %}
+    is-upvoted-by-me{% endif %}{% if topic.is_status_archived %}
+     archived{% endif %}" hx-get="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/card"
+    hx-trigger="sse:topic-updated-{{ topic.id }}" hx-swap="outerHTML" sse-swap="topic-deleted-{{ topic.id }}">
 
     <div id="topic-first-row">
         <p id="topic-text-content">{{ topic.text|trim }}</p>
 
-        {% if topic.is_created_by_current_user %}
+        {% let has_action_buttons = topic.can_edit || topic.can_delete || topic.can_change_status %}
+
+        {% if has_action_buttons %}
         <div id="action-buttons">
 
+            {% if topic.can_change_status %}
+            <div {% if topic.is_status_archived %}
+                hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/unarchive" {% else %}
+                hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/archive" {% endif %}
+                id="archive-topic-button" hx-target="#topic-{{ topic.id }}" hx-swap="delete" class="action-icon"
+                hx-confirm="Are you sure you want to {% if topic.is_status_archived %}
+            unarchive {% else %}
+            archive {% endif %} this topic?">
+            </div>
+            {% endif %}
+
+            {% if topic.can_edit && !topic.is_status_archived %}
             <div hx-get="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}" id="edit-topic-button" hx-push-url="true"
                 hx-target="#content" hx-select="#content" hx-swap="outerHTML" class="action-icon">
             </div>
+            {% endif %}
 
+            {% if topic.can_delete && !topic.is_status_archived %}
             <div hx-delete="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}" id="delete-topic-button"
-                hx-target="#topic-{{ topic.id }}" hx-swap="delete" class=" action-icon">
+                hx-target="#topic-{{ topic.id }}" hx-swap="delete" class="action-icon"
+                hx-confirm="Are you sure you want to delete this topic?">
             </div>
+            {% endif %}
 
         </div>
         {% endif %}
@@ -44,10 +62,11 @@
             <h4 id="upvotes-count">{{ upvotes_count }}</h4>
             {% endif %}
 
-            <img src="/static/images/arrow-up.svg" alt="Upvote icon" id="upvote-icon" class="action-icon" {% if
-                topic.is_upvoted_by_current_user %} hx-delete="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/vote"
-                {% else %} hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/vote" {% endif %}
-                hx-target="#topic-{{ topic.id }}" hx-swap="outerHTML" />
+            <img src="/static/images/arrow-up.svg" alt="Upvote icon" id="upvote-icon" class="action-icon" {%
+                if!topic.is_status_archived %} {% if topic.is_upvoted_by_current_user %}
+                hx-delete="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/vote" {% else %}
+                hx-post="/guilds/{{ topic.guild_id }}/topics/{{ topic.id }}/vote" {% endif %}
+                hx-target="#topic-{{ topic.id }}" hx-swap="outerHTML" {% endif %} />
 
         </div>
     </div>

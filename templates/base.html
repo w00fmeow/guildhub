@@ -28,10 +28,37 @@
   {% block head %}{% endblock %}
 </head>
 
-<body hx-boost="true">
+<script>
+  function onConfirm() {
+    const hasConfirmAttribute = event.detail.target.hasAttribute('hx-confirm') || event.srcElement.hasAttribute('hx-confirm');
+
+    if (!hasConfirmAttribute) return
+
+    const confirmEvent = event;
+
+    confirmEvent.preventDefault()
+
+    Swal.fire({
+      title: "Hold on",
+      text: event.detail.question || 'Are you sure?',
+      showDenyButton: true,
+      confirmButtonText: "Yes",
+      denyButtonText: "No",
+      animation: false,
+      buttonsStyling: false
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        confirmEvent.detail.issueRequest(true);
+      }
+    })
+  }
+</script>
+
+<body hx-boost="true" hx-on::confirm="onConfirm()">
   <div id="content">{% block content %}{% endblock %}</div>
 
   <script src="/static/js/Sortable.js"></script>
+  <script src="/static/js/sweetalert2@11.js"></script>
 </body>
 
 </html>

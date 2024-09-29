@@ -9,12 +9,12 @@ use crate::{
             Event as AppEvent, HxTriggerEvent, ToastLevel,
         },
         guild::GuildEvent,
-        topic::types::{TopicEvent, TopicsListItemTemplate},
+        topic::types::{TopicEvent, TopicStatus, TopicsListItemTemplate},
     },
 };
 use anyhow::anyhow;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::HeaderValue,
     response::{
         sse::{Event, KeepAlive},
@@ -38,9 +38,9 @@ use tracing::{debug, error, info};
 use validator::Validate;
 
 use super::{
-    CreateGuildFormTemplate, EditGuildFormTemplate, GuildDraft, GuildFormDTO,
-    GuildIdParameter, GuildListItemsTemplate, GuildOverviewTemplate,
-    GuildTemplate, GuildsListTemplate,
+    ArchivedQueryParameter, CreateGuildFormTemplate, EditGuildFormTemplate,
+    GuildDraft, GuildFormDTO, GuildIdParameter, GuildListItemsTemplate,
+    GuildOverviewTemplate, GuildTemplate, GuildsListTemplate,
 };
 
 pub async fn get_guilds_page(
@@ -266,9 +266,15 @@ pub async fn insert_new_member(
 
 pub async fn get_guild(
     Authenticated(user): Authenticated,
-    Path(parameters): Path<GuildIdParameter>,
+    Path(GuildIdParameter { guild_id }): Path<GuildIdParameter>,
+    Query(ArchivedQueryParameter { archived }): Query<ArchivedQueryParameter>,
 ) -> impl IntoResponse {
-    GuildTemplate { user, guild_id: parameters.guild_id.to_owned() }
+    let status = match archived {
+        Some(true) => TopicStatus::Archived,
+        _ => TopicStatus::Created,
+    };
+
+    GuildTemplate { user, guild_id, status }
 }
 
 pub async fn get_guild_overview(
@@ -485,7 +491,11 @@ pub async fn subscribe_to_events(
     Authenticated(user): Authenticated,
     Path(parameters): Path<GuildIdParameter>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    info!("User {} subscribed to events", &user.id);
+    let user_id = user.id.clone();
+
+    let guild = app.guilds_service.get_guild(user, &parameters.guild_id).await;
+
+    info!("User {} subscribed to events", &user_id);
 
     let mut app_events_receiver = app.events_channel.0.subscribe();
 
@@ -502,19 +512,26 @@ pub async fn subscribe_to_events(
                             sleep(Duration::from_secs(5)).await;
                         }
                         Err(err) => {
-                            debug!("Dropping stale client {}. Error: {err}", &user.id);
+                            debug!("Dropping stale client {}. Error: {err}", &user_id);
                             break;
                         }
                     }
                 };
             }=>{
-                info!("User {} disconnected", &user.id);
+                info!("User {} disconnected", &user_id);
             }
             _ = async {
-               loop {
+                let guild = match guild {
+                    Ok(Some(guild)) => guild,
+                    _ => return
+                };
+
+
+                loop {
                     match app_events_receiver.recv().await {
                         Ok(event) => {
                             debug!("new event {event:?}");
+
                             match event {
                                 AppEvent::Guild(GuildEvent::Update(guild)) => {
                                     if guild.id == parameters.guild_id {
@@ -533,29 +550,47 @@ pub async fn subscribe_to_events(
                                 }
                                 AppEvent::Topic(TopicEvent::Create(topic)) => {
                                     if topic.guild_id == parameters.guild_id {
-                                        match app.topics_service.map_topic_with_user(topic, user.id).await {
+
+                                        match app.topics_service.map_topic_with_user(&guild,topic, user_id).await {
                                             Ok(topic) => {
+                                                let event_name = format!("topic-{}", &topic.status);
+
                                                 let topic_item = TopicsListItemTemplate { topic };
-                                                let _ = tx.send(Event::default().data(topic_item.to_string()).event("topic-created")).await;
+                                                let _ = tx.send(Event::default().data(topic_item.to_string()).event(event_name)).await;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                AppEvent::Topic(TopicEvent::StatusChange(topic)) => {
+                                    if topic.guild_id == parameters.guild_id {
+
+                                        match app.topics_service.map_topic_with_user(&guild,topic, user_id).await {
+                                            Ok(topic) => {
+                                                let _ = tx.send(Event::default().data(" ").event(format!("topic-deleted-{}", topic.id))).await;
+
+                                                let event_name = format!("topic-{}", &topic.status);
+
+                                                let topic_item = TopicsListItemTemplate { topic };
+                                                let _ = tx.send(Event::default().data(topic_item.to_string()).event(event_name)).await;
+
                                             }
                                             _ => {}
                                         }
                                     }
                                 }
                                 AppEvent::Topic(TopicEvent::OrderChange(ids)) => {
-                                    debug!("ids: {ids:?}");
+                                    debug!("TopicEvent::OrderChange ids: {ids:?}");
 
-                                     match serde_json::to_string(&ids) {
+                                    match serde_json::to_string(&ids) {
                                         Ok(data) => {
-                                            debug!("data {}", data);
-
                                             let _ = tx.send(Event::default().data(data).event("topics-order-changed")).await;
                                         }
                                         _ => {}
                                      }
 
                                 }
-                                    _ => {}
+                                _ => {}
                             }
                         }
                         Err(err) => {

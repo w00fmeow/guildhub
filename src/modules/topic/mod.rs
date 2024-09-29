@@ -1,5 +1,6 @@
 pub mod constants;
 pub mod controller;
+pub mod migrations;
 pub mod repository;
 pub mod service;
 pub mod types;

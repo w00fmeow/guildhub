@@ -124,6 +124,73 @@ button.--disabled {
   pointer-events: none;
 }
 
+/* checkbox */
+.checkbox .control {
+  display: block;
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+}
+
+.checkbox .control input {
+  position: absolute;
+  z-index: -1;
+  opacity: 0;
+}
+
+.checkbox .control__indicator {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  height: 14px;
+  width: 14px;
+  background: var(--color-white);
+}
+
+.checkbox .control:hover input ~ .control__indicator,
+.checkbox .control input:focus ~ .control__indicator {
+  background: var(--color-gray);
+}
+
+.checkbox .control input:checked ~ .control__indicator {
+  background: var(--color-action);
+}
+
+.checkbox .control:hover input:not([disabled]):checked ~ .control__indicator,
+.checkbox .control input:checked:focus ~ .control__indicator {
+  background: var(--color-action);
+}
+
+.checkbox .control input:disabled ~ .control__indicator {
+  background: var(--color-gray);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.checkbox .control__indicator:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox .control input:checked ~ .control__indicator:after {
+  display: block;
+}
+
+.checkbox .control--checkbox .control__indicator:after {
+  left: 5px;
+  top: 1px;
+  width: 3px;
+  height: 8px;
+  border: solid var(--color-white);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox .control--checkbox input:disabled ~ .control__indicator:after {
+  border-color: var(--color-disabled);
+}
+
 #logo {
   user-select: none;
 }
@@ -153,8 +220,6 @@ button.--disabled {
   overflow-y: auto;
 
   gap: 5px;
-
-  /* box-shadow: -4px 5px var(--color-action); */
 }
 
 .autocomplete #options #option {
@@ -253,6 +318,24 @@ button.--disabled {
   }
 }
 
+.swal2-popup {
+  background-color: var(--color-gray);
+  border-radius: 8px;
+  color: var(--color-bg);
+}
+
+.swal2-actions {
+  gap: 8px;
+}
+
+.swal2-actions > .swal2-confirm {
+  background-color: var(--color-action);
+}
+
+.swal2-actions > .swal2-deny {
+  background-color: var(--color-red);
+}
+
 /* Forms */
 #form-field {
   display: flex;
@@ -280,7 +363,7 @@ button.--disabled {
   margin-bottom: 8px;
 }
 
-#form-field.--checkbox > label {
+#form-field.checkbox > label {
   margin-bottom: unset;
 }
 

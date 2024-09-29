@@ -65,7 +65,8 @@
             hx-select="#content" hx-swap="outerHTML" class="action-icon">
         </div>
 
-        <div hx-delete="/guilds/{{ guild.id }}" id="delete-guild-button" class="action-icon">
+        <div hx-delete="/guilds/{{ guild.id }}" id="delete-guild-button" class="action-icon"
+            hx-confirm="Are you sure you want to delete this guild?">
         </div>
     </div>
     {% endif %}

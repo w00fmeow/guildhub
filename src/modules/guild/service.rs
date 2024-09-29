@@ -127,6 +127,17 @@ impl GuildsService {
         }))
     }
 
+    pub async fn get_guild_or_error(
+        &self,
+        user: Member,
+        guild_id: &str,
+    ) -> Result<Guild> {
+        match self.get_guild(user, guild_id).await? {
+            Some(guild) => Ok(guild),
+            _ => bail!("Failed to find guild"),
+        }
+    }
+
     pub async fn get_guilds(&self, user_id: usize) -> Result<Vec<Guild>> {
         let documents = self.repository.get_guilds(user_id).await?;
 

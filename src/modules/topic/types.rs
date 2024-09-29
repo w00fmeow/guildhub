@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use crate::{
     libs::{gitlab_api::gitlab_api::Member, serialization},
@@ -17,10 +17,34 @@ use validator::Validate;
 use super::TopicDocument;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TopicStatus {
+    Created,
+    Archived,
+}
+
+impl TopicStatus {
+    pub fn initial() -> Self {
+        TopicStatus::Created
+    }
+}
+
+impl fmt::Display for TopicStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let status_str = match self {
+            TopicStatus::Created => "created",
+            TopicStatus::Archived => "archived",
+        };
+        write!(f, "{}", status_str)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Topic {
     pub id: String,
     pub guild_id: String,
     pub text: String,
+    pub status: TopicStatus,
     pub will_be_presented_by_the_creator: bool,
     pub created_by_user_id: usize,
     pub upvoted_by_users_ids: Vec<usize>,
@@ -38,6 +62,7 @@ impl TryFrom<Topic> for TopicDocument {
             _id: ObjectId::from_str(&topic.id)?,
             guild_id: ObjectId::from_str(&topic.guild_id)?,
             text: topic.text,
+            status: topic.status,
             will_be_presented_by_the_creator: topic
                 .will_be_presented_by_the_creator,
             upvoted_by_users_ids: topic.upvoted_by_users_ids,
@@ -54,6 +79,7 @@ impl From<TopicDocument> for Topic {
             id: document._id.to_hex(),
             guild_id: document.guild_id.to_hex(),
             text: document.text,
+            status: document.status,
             will_be_presented_by_the_creator: document
                 .will_be_presented_by_the_creator,
             upvoted_by_users_ids: document.upvoted_by_users_ids,
@@ -69,9 +95,13 @@ pub struct TopicPersonalized {
     pub id: String,
     pub guild_id: String,
     pub text: String,
+    pub status: TopicStatus,
     pub will_be_presented_by_the_creator: bool,
-    pub is_created_by_current_user: bool,
+    pub can_edit: bool,
+    pub can_delete: bool,
+    pub can_change_status: bool,
     pub is_upvoted_by_current_user: bool,
+    pub is_status_archived: bool,
     pub created_by_user: Member,
     pub upvoted_by_users: Vec<Member>,
     #[serde(with = "serialization::chrono_date")]
@@ -86,6 +116,7 @@ impl From<TopicPersonalized> for Topic {
             id: topic.id,
             guild_id: topic.guild_id,
             text: topic.text,
+            status: topic.status,
             upvoted_by_users_ids: topic
                 .upvoted_by_users
                 .into_iter()
@@ -158,6 +189,7 @@ pub struct TopicsListTemplate {
     pub current_page: usize,
     pub has_more_topics: bool,
     pub topics: Vec<TopicPersonalized>,
+    pub status: TopicStatus,
 }
 
 #[derive(Template)]
@@ -173,6 +205,7 @@ pub struct VoteTopicResult {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum TopicEvent {
+    StatusChange(Topic),
     Create(Topic),
     Update(Topic),
     Delete(Topic),
