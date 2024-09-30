@@ -140,7 +140,8 @@
             </p>
 
             <img id="remove-icon" src="/static/images/trash-can.svg" alt="Remove member" class="action-icon"
-                hx-delete="/guilds/draft/members/{{ member.id }}" hx-target="closest li" hx-swap="outerHTML"></img>
+                hx-delete="/guilds/draft/members/{{ member.id }}" hx-target="closest li" hx-swap="outerHTML"
+                hx-confirm="Are you sure you want to remove  @{{ member.username }} from this guild?"></img>
         </li>
         {% endfor %}
     </ul>
